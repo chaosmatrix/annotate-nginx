@@ -42,6 +42,13 @@ ngx_stream_init_connection(ngx_connection_t *c)
 
     port = c->listening->servers;
 
+    // Annotate:
+    //  * traverse listen list
+    // Verify sequence:
+    //  * local addr
+    //  * ipv6 permit
+    //  * ipv4
+    //  * wildcard *:port
     if (port->naddrs > 1) {
 
         /*

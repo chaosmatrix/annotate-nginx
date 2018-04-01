@@ -26,6 +26,8 @@ typedef struct {
 } ngx_hash_t;
 
 
+// Annotate:
+//  * use to match key startswith||endswith '*', aka wildcard
 typedef struct {
     ngx_hash_t        hash;
     void             *value;
@@ -42,22 +44,35 @@ typedef struct {
 typedef ngx_uint_t (*ngx_hash_key_pt) (u_char *data, size_t len);
 
 
+// Annotate:
+//  *
 typedef struct {
+    // * normal hash key, hash table
     ngx_hash_t            hash;
+    // * hash key startswith wildcard
     ngx_hash_wildcard_t  *wc_head;
+    // * hash key endswith wildcard
     ngx_hash_wildcard_t  *wc_tail;
 } ngx_hash_combined_t;
 
 
+// Annotate:
+//  *
 typedef struct {
     ngx_hash_t       *hash;
     ngx_hash_key_pt   key;
 
+    // * The max nunber of hash bucket of hash table
+    //  * large, less conflict
     ngx_uint_t        max_size;
+    // * max elements of hash bucket can store
     ngx_uint_t        bucket_size;
 
+    // * hash table name
     char             *name;
+    // * memory pool use to allocate memory for hash table
     ngx_pool_t       *pool;
+    // * use in init, can be destroy after init
     ngx_pool_t       *temp_pool;
 } ngx_hash_init_t;
 

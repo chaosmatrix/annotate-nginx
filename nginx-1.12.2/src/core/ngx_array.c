@@ -51,6 +51,8 @@ ngx_array_push(ngx_array_t *a)
     size_t       size;
     ngx_pool_t  *p;
 
+    // Annotate:
+    //  * array extend policy
     if (a->nelts == a->nalloc) {
 
         /* the array is full */

@@ -469,6 +469,11 @@ ngx_stream_optimize_servers(ngx_conf_t *cf, ngx_array_t *ports)
 
         i = 0;
 
+        // Annotate:
+        //  * Traverse listen config options
+        //  * create listening socket
+        //  * init stream connection
+        //  * clone connection to all worker
         while (i < last) {
 
             if (bind_wildcard && !addr[i].opt.bind) {
@@ -483,6 +488,8 @@ ngx_stream_optimize_servers(ngx_conf_t *cf, ngx_array_t *ports)
             }
 
             ls->addr_ntop = 1;
+            // Annotate:
+            //  * function to handle accept connection
             ls->handler = ngx_stream_init_connection;
             ls->pool_size = 256;
             ls->type = addr[i].opt.type;
@@ -493,6 +500,9 @@ ngx_stream_optimize_servers(ngx_conf_t *cf, ngx_array_t *ports)
             ls->log.data = &ls->addr_text;
             ls->log.handler = ngx_accept_log_error;
 
+		// Annotate:
+		//	* pending queue size
+		//	* work together with kernel config (synctl)
             ls->backlog = addr[i].opt.backlog;
 
             ls->wildcard = addr[i].opt.wildcard;
@@ -505,10 +515,17 @@ ngx_stream_optimize_servers(ngx_conf_t *cf, ngx_array_t *ports)
 #endif
 
 #if (NGX_HAVE_INET6)
+		// Annotate:
+		//	* if system disallow ipv6, return ERROR
             ls->ipv6only = addr[i].opt.ipv6only;
 #endif
 
 #if (NGX_HAVE_REUSEPORT)
+		// Annotate:
+		//	* security consider && kernel load balance
+		//	* only process has same euid permit
+		//	* udp: distribution of incoming datagrams to multiple processes
+		//	* tcp:  distribution of accept on multi-threaded server
             ls->reuseport = addr[i].opt.reuseport;
 #endif
 
@@ -536,6 +553,9 @@ ngx_stream_optimize_servers(ngx_conf_t *cf, ngx_array_t *ports)
                 break;
             }
 
+		// Annotate:
+		//	* use same configuration option to listen socket
+		//	* clone these config to all worker
             if (ngx_clone_listening(cf, ls) != NGX_OK) {
                 return NGX_CONF_ERROR;
             }

@@ -823,6 +823,9 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
+    // Annotate:
+    //  * udp not support option proxy protocol
+    //  * udp not support udp-ssl, DTLS
     if (ls->type == SOCK_DGRAM) {
         if (backlog) {
             return "\"backlog\" parameter is incompatible with \"udp\"";

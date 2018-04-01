@@ -13,12 +13,18 @@
 #include <ngx_core.h>
 
 
+// Annotate:
+//  * 
 typedef struct {
+    // * string length
     size_t      len;
+    // * point to first char of string
     u_char     *data;
 } ngx_str_t;
 
 
+// Annotate:
+//  * key=val
 typedef struct {
     ngx_str_t   key;
     ngx_str_t   value;
@@ -44,6 +50,8 @@ typedef struct {
 #define ngx_str_null(str)   (str)->len = 0; (str)->data = NULL
 
 
+// Annotate:
+//  * 
 #define ngx_tolower(c)      (u_char) ((c >= 'A' && c <= 'Z') ? (c | 0x20) : c)
 #define ngx_toupper(c)      (u_char) ((c >= 'a' && c <= 'z') ? (c & ~0x20) : c)
 

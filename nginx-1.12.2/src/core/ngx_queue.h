@@ -15,6 +15,11 @@
 
 typedef struct ngx_queue_s  ngx_queue_t;
 
+// Annotate:
+//  * doubly link list
+//  * only define prev&&next pointer
+//  * data value must define additional
+//  * get data pointer via ngx_queue_data
 struct ngx_queue_s {
     ngx_queue_t  *prev;
     ngx_queue_t  *next;
@@ -99,7 +104,8 @@ struct ngx_queue_s {
     (h)->prev = (n)->prev;                                                    \
     (h)->prev->next = h;
 
-
+// Annotate:
+//  * get data via pointer address minus
 #define ngx_queue_data(q, type, link)                                         \
     (type *) ((u_char *) q - offsetof(type, link))
 

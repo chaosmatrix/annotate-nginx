@@ -53,7 +53,11 @@ typedef struct {
     ngx_uint_t            failed;
 } ngx_pool_data_t;
 
-
+// Annotate:
+//  * allocate memory  resource
+//  * cleanup resource
+//  * all object in same pool has same lifecycle
+//  * additional api support to release resource manualy
 struct ngx_pool_s {
     ngx_pool_data_t       d;
     size_t                max;

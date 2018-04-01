@@ -211,6 +211,8 @@ static ngx_command_t  ngx_stream_proxy_commands[] = {
       offsetof(ngx_stream_proxy_srv_conf_t, next_upstream_timeout),
       NULL },
 
+    // Annotate:
+    //  * outgoing connection support proxy_protocol
     { ngx_string("proxy_protocol"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
@@ -1430,7 +1432,8 @@ ngx_stream_proxy_test_connect(ngx_connection_t *c)
          * BSDs and Linux return 0 and set a pending error in err
          * Solaris returns -1 and sets errno
          */
-
+        // Annotate:
+        //  *  SO_ERROR: Get and clear the pending socket error
         if (getsockopt(c->fd, SOL_SOCKET, SO_ERROR, (void *) &err, &len)
             == -1)
         {
@@ -1874,6 +1877,11 @@ ngx_stream_proxy_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_stream_proxy_srv_conf_t *prev = parent;
     ngx_stream_proxy_srv_conf_t *conf = child;
 
+    // Annotate:
+    //  * proxy_connect_timeout
+    //  * proxy_timeout
+    //  * proxy_next_upstream_timeout
+    //  * proxy_
     ngx_conf_merge_msec_value(conf->connect_timeout,
                               prev->connect_timeout, 60000);
 
@@ -1892,6 +1900,9 @@ ngx_stream_proxy_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_size_value(conf->download_rate,
                               prev->download_rate, 0);
 
+    // Annotate:
+    //  * Sets the number of datagrams expected from the proxied server in response to the client request if the UDP protocol is used
+    //  * Default: not limit
     ngx_conf_merge_uint_value(conf->responses,
                               prev->responses, NGX_MAX_INT32_VALUE);
 
@@ -2094,12 +2105,16 @@ ngx_stream_proxy_bind(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_stream_upstream_local_t         *local;
     ngx_stream_compile_complex_value_t   ccv;
 
+    // Annotate:
+    //  * proxy_bind must appear once in server{}
     if (pscf->local != NGX_CONF_UNSET_PTR) {
         return "is duplicate";
     }
 
     value = cf->args->elts;
 
+    // Annotate:
+    //  * cf->args->elts == "proxy_bind off"
     if (cf->args->nelts == 2 && ngx_strcmp(value[1].data, "off") == 0) {
         pscf->local = NULL;
         return NGX_CONF_OK;

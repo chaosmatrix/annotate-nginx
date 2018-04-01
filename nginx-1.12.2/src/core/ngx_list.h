@@ -15,17 +15,28 @@
 
 typedef struct ngx_list_part_s  ngx_list_part_t;
 
+// Annotate:
+//  * one-way link list
 struct ngx_list_part_s {
+    // * point to first node
     void             *elts;
+    // * list length
     ngx_uint_t        nelts;
+    // * point to next
     ngx_list_part_t  *next;
 };
 
 
+// Annotate:
+//  * 
 typedef struct {
+    // * point to last node
     ngx_list_part_t  *last;
+    // * point to first node
     ngx_list_part_t   part;
+    // * memory usage
     size_t            size;
+    // * capacity
     ngx_uint_t        nalloc;
     ngx_pool_t       *pool;
 } ngx_list_t;

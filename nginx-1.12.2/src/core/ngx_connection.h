@@ -48,6 +48,11 @@ struct ngx_listening_s {
     /* should be here because of the deferred accept */
     ngx_msec_t          post_accept_timeout;
 
+    // Annotate:
+    //  * ngx_listening_s
+    //  * point to previous or next ?
+    //      * ngx_listening_t allocated by ngx_array_push
+    //      * in order to contruct as a link, should point to previous node
     ngx_listening_t    *previous;
     ngx_connection_t   *connection;
 

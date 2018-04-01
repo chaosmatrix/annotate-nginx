@@ -13,11 +13,21 @@
 #include <ngx_core.h>
 
 
+// Annotate:
+//  * 
 typedef struct {
+    //  * The pointer point to memory block, refer to data
     void        *elts;
+    //  * The number of elements
     ngx_uint_t   nelts;
+    //  * The size of element
     size_t       size;
+    //  * array capacity
+    //  * if nelts == nalloc, need allocate memory
+    //      * if pool has space to allocate, no need create new array
+    //      * else create new array, 2 * nelts
     ngx_uint_t   nalloc;
+    //  * memory pool
     ngx_pool_t  *pool;
 } ngx_array_t;
 
