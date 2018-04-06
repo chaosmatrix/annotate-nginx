@@ -414,6 +414,10 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
 
 #if (NGX_HAVE_REUSEPORT)
 
+            // Annotate:
+            //  * SO_REUSEPORT
+            //      * improve load distribution for incoming datagram/accept
+            //      * some security risk should be considered
             if (ls[i].add_reuseport) {
 
                 /*
@@ -751,6 +755,10 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
 #endif
 
 #if (NGX_HAVE_SETFIB)
+
+        // Annotate:
+        //  * set which route table nginx use
+        //  * Only support in FreeBSD ?
         if (ls[i].setfib != -1) {
             if (setsockopt(ls[i].fd, SOL_SOCKET, SO_SETFIB,
                            (const void *) &ls[i].setfib, sizeof(int))
@@ -764,6 +772,9 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
 #endif
 
 #if (NGX_HAVE_TCP_FASTOPEN)
+
+        // Annotate:
+        //  * client&server both need to support, or something wrong
         if (ls[i].fastopen != -1) {
             if (setsockopt(ls[i].fd, IPPROTO_TCP, TCP_FASTOPEN,
                            (const void *) &ls[i].fastopen, sizeof(int))
@@ -791,6 +802,23 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
         }
 #endif
 
+        // Annotate:
+        //  * min(listen backlog , somaxconn)
+        //  * reference: man listen
+        //      * If the backlog argument is greater than 
+        //      * the value in /proc/sys/net/core/somaxconn, 
+        //      * then it is silently truncated to that value
+        //  * kernel
+        //      * reference: Documentation/networking/ip-sysctl.txt
+        //      * tcp_max_syn_backlog
+        //          * the number of tcp connection in SYN RECEIVED
+        //      * somaxconn
+        //          * the number of tcp connection in ESTABLISHED
+        //          * Limit of socket listen() backlog, known in userspace as SOMAXCONN
+        //      * other config options
+        //          * tcp_syncookies
+        //          * tcp_synack_retries
+        //          * tcp_abort_on_overflow
         if (ls[i].listen) {
 
             /* change backlog via listen() */
@@ -808,9 +836,25 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
          */
 
 #if (NGX_HAVE_DEFERRED_ACCEPT)
+        // Annotate:
+        //  * reference: https://httpd.apache.org/docs/trunk/mod/core.html#AcceptFilter
+        //      * The basic premise is for the kernel to not send a socket to the server process 
+        //      * until either data is received or an entire HTTP Request is buffered
+        //  * man tcp:
+        //      * Allow a listener to be awakened only when data arrives on the socket. 
+        //      * Takes an integer value (seconds), 
+        //      * this can bound the maximum number of attempts TCP 
+        //      * will make to complete the connection
+        //  * Optimaze
+        //      * reduce times to call epoll_ctl epoll_wait
 
 #ifdef SO_ACCEPTFILTER
 
+        //  * config option:
+        //      * listen 80 accept_filter dataready;
+        //          * https://www.freebsd.org/cgi/man.cgi?accf_data
+        //      * listen 80 accept_filter httpready;
+        //          * https://www.freebsd.org/cgi/man.cgi?accf_http
         if (ls[i].delete_deferred) {
             if (setsockopt(ls[i].fd, SOL_SOCKET, SO_ACCEPTFILTER, NULL, 0)
                 == -1)
@@ -856,6 +900,8 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
 
 #ifdef TCP_DEFER_ACCEPT
 
+        //  * config options:
+        //      * listen 80 deferred;
         if (ls[i].add_deferred || ls[i].delete_deferred) {
 
             if (ls[i].add_deferred) {
@@ -894,6 +940,8 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
 
 #if (NGX_HAVE_IP_RECVDSTADDR)
 
+        // Annotate:
+        //  * FreeBSD
         if (ls[i].wildcard
             && ls[i].type == SOCK_DGRAM
             && ls[i].sockaddr->sa_family == AF_INET)
@@ -913,6 +961,21 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
 
 #elif (NGX_HAVE_IP_PKTINFO)
 
+        //  * Linux
+        //  * reference: man ip
+        //  * IP_PKTINFO
+        //      * Pass an IP_PKTINFO ancillary message 
+        //      * that contains a pktinfo structure 
+        //      * that supplies some information about the incoming packet
+        //  * details:
+        //      struct in_pktinfo {
+        //          unsigned int   ipi_ifindex;  /* Interface index */
+        //          struct in_addr ipi_spec_dst; /* Local address */
+        //          struct in_addr ipi_addr;     /* Header Destination address */
+        //      };
+        //      * ipi_ifindex is the unique index of the interface the packet was received on.
+        //      * ipi_spec_dst is the local address of the packet
+        //      * ipi_addr is the destination address in the packet header. 
         if (ls[i].wildcard
             && ls[i].type == SOCK_DGRAM
             && ls[i].sockaddr->sa_family == AF_INET)
@@ -958,6 +1021,8 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
 }
 
 
+// Annotate:
+//  * add into free_connections
 void
 ngx_close_listening_sockets(ngx_cycle_t *cycle)
 {
@@ -1029,7 +1094,12 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
     cycle->listening.nelts = 0;
 }
 
-
+// Annotate:
+//  1. Return NULL, current worker process not ngx_connection_t available
+//  2. pick from free_connections
+//  3. free_connections is empty, drain at most 1/8 * reusable_connections
+//  4. pick from free_connections
+//  5. no avaliable worker_connections
 ngx_connection_t *
 ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
 {
@@ -1099,6 +1169,9 @@ ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
 }
 
 
+// Annotate:
+//  * recycle ngx_connection_t
+//  * simply add to ngx_cycle->free_connections
 void
 ngx_free_connection(ngx_connection_t *c)
 {
@@ -1106,12 +1179,18 @@ ngx_free_connection(ngx_connection_t *c)
     ngx_cycle->free_connections = c;
     ngx_cycle->free_connection_n++;
 
+    // * iif c already in ngx_cycle, remove it
     if (ngx_cycle->files && ngx_cycle->files[c->fd] == c) {
         ngx_cycle->files[c->fd] = NULL;
     }
 }
 
-
+// Annotate:
+//  * delete read/write timer
+//  * ngx_connection_t is shared, then post event
+//  * set ngx_connection_t unreusable
+//  * add ngx_connection_t into free_connections
+//  * close associate socket fd
 void
 ngx_close_connection(ngx_connection_t *c)
 {
@@ -1158,10 +1237,12 @@ ngx_close_connection(ngx_connection_t *c)
     c->read->closed = 1;
     c->write->closed = 1;
 
+    // * set ngx_connection_t unreusable
     ngx_reusable_connection(c, 0);
 
     log_error = c->log_error;
 
+    // * add ngx_connection_t into free_connections
     ngx_free_connection(c);
 
     fd = c->fd;
@@ -1200,6 +1281,9 @@ ngx_close_connection(ngx_connection_t *c)
 }
 
 
+// Annotate:
+//  * if reusable remove ngx_connection_t
+//  * insert ngx_connection_t in queue head, if need reusable
 void
 ngx_reusable_connection(ngx_connection_t *c, ngx_uint_t reusable)
 {
@@ -1230,7 +1314,8 @@ ngx_reusable_connection(ngx_connection_t *c, ngx_uint_t reusable)
     }
 }
 
-
+// Annotate:
+//  * close resuable connection ?
 static void
 ngx_drain_connections(ngx_cycle_t *cycle)
 {
@@ -1238,6 +1323,7 @@ ngx_drain_connections(ngx_cycle_t *cycle)
     ngx_queue_t       *q;
     ngx_connection_t  *c;
 
+    // * reusable_connections_n / 8
     n = ngx_max(ngx_min(32, cycle->reusable_connections_n / 8), 1);
 
     for (i = 0; i < n; i++) {

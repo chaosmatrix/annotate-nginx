@@ -300,6 +300,8 @@ ngx_stream_upstream_init_chash(ngx_conf_t *cf,
     us->peer.init = ngx_stream_upstream_init_chash_peer;
 
     peers = us->peer.data;
+    // Annotate:
+    //  * add virtual host, for more effitive load balance
     npoints = peers->total_weight * 160;
 
     size = sizeof(ngx_stream_upstream_chash_points_t)
@@ -320,6 +322,7 @@ ngx_stream_upstream_init_chash(ngx_conf_t *cf,
          * crc32(HOST \0 PORT PREV_HASH).
          */
 
+        // * Unix socket, not port, only consider socket domain
         if (server->len >= 5
             && ngx_strncasecmp(server->data, (u_char *) "unix:", 5) == 0)
         {
@@ -353,6 +356,8 @@ ngx_stream_upstream_init_chash(ngx_conf_t *cf,
 
     done:
 
+        // Annotate:
+        //  * hash key: host&&port
         ngx_crc32_init(base_hash);
         ngx_crc32_update(&base_hash, host, host_len);
         ngx_crc32_update(&base_hash, (u_char *) "", 1);
@@ -360,7 +365,10 @@ ngx_stream_upstream_init_chash(ngx_conf_t *cf,
 
         prev_hash.value = 0;
         npoints = peer->weight * 160;
-
+        
+        //  * init consisten hash table, a 32bit cycle
+        //  * peer->weight * 160
+        //  * hash key: base_hash && prev_hash[:4]
         for (j = 0; j < npoints; j++) {
             hash = base_hash;
 
@@ -382,6 +390,7 @@ ngx_stream_upstream_init_chash(ngx_conf_t *cf,
         }
     }
 
+    // * Insertion Sort, asc
     ngx_qsort(points->point,
               points->number,
               sizeof(ngx_stream_upstream_chash_point_t),
@@ -437,6 +446,7 @@ ngx_stream_upstream_find_chash_point(ngx_stream_upstream_chash_points_t *points,
     i = 0;
     j = points->number;
 
+    // * binary search O(nlogn)
     while (i < j) {
         k = (i + j) / 2;
 
@@ -451,6 +461,7 @@ ngx_stream_upstream_find_chash_point(ngx_stream_upstream_chash_points_t *points,
         }
     }
 
+    // * default return first
     return i;
 }
 

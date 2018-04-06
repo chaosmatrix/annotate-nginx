@@ -18,7 +18,15 @@ static void ngx_debug_accepted_connection(ngx_event_conf_t *ecf,
     ngx_connection_t *c);
 #endif
 
-
+// FIXME
+// Annotate:
+//  1. if timeout, re-add event
+//  2. accept connection according event {} config
+//  3. default accept all connection
+//  4. if ngx_use_accept_mutex not use, add event into event_timer
+//      * timer_event will be process by ngx_process_events_and_timers
+//  5. update status info
+//  6. free resource if error ocurr, and continue process next
 void
 ngx_event_accept(ngx_event_t *ev)
 {
@@ -36,6 +44,7 @@ ngx_event_accept(ngx_event_t *ev)
     static ngx_uint_t  use_accept4 = 1;
 #endif
 
+    // * timeout, re-add
     if (ev->timedout) {
         if (ngx_enable_accept_events((ngx_cycle_t *) ngx_cycle) != NGX_OK) {
             return;
@@ -44,8 +53,10 @@ ngx_event_accept(ngx_event_t *ev)
         ev->timedout = 0;
     }
 
+    // * get event config options
     ecf = ngx_event_get_conf(ngx_cycle->conf_ctx, ngx_event_core_module);
 
+    // * enable multi_accept if not use kqueue
     if (!(ngx_event_flags & NGX_USE_KQUEUE_EVENT)) {
         ev->available = ecf->multi_accept;
     }
@@ -102,6 +113,7 @@ ngx_event_accept(ngx_event_t *ev)
 #endif
 
             if (err == NGX_ECONNABORTED) {
+                // * if use kqueue, only accept ev->avaliable numbers connection
                 if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
                     ev->available--;
                 }
@@ -118,6 +130,7 @@ ngx_event_accept(ngx_event_t *ev)
                     return;
                 }
 
+                // * accept_mutex use to prevent thundering herd, if enable
                 if (ngx_use_accept_mutex) {
                     if (ngx_accept_mutex_held) {
                         ngx_shmtx_unlock(&ngx_accept_mutex);
@@ -127,6 +140,7 @@ ngx_event_accept(ngx_event_t *ev)
                     ngx_accept_disabled = 1;
 
                 } else {
+                    // * add event into timer rbtree
                     ngx_add_timer(ev, ecf->accept_mutex_delay);
                 }
             }
@@ -134,13 +148,17 @@ ngx_event_accept(ngx_event_t *ev)
             return;
         }
 
+    // * update status info
 #if (NGX_STAT_STUB)
         (void) ngx_atomic_fetch_add(ngx_stat_accepted, 1);
 #endif
 
+        // * worker process diable to accept connection
+        // * if free_connections_n less than 1/8 connection_n
         ngx_accept_disabled = ngx_cycle->connection_n / 8
                               - ngx_cycle->free_connection_n;
 
+        // * get connection from frer_connections_queue
         c = ngx_get_connection(s, ev->log);
 
         if (c == NULL) {
@@ -152,12 +170,15 @@ ngx_event_accept(ngx_event_t *ev)
             return;
         }
 
+        // * hardcod as tcp ? stream-oriented protocol
         c->type = SOCK_STREAM;
 
+        // * now, connection is active
 #if (NGX_STAT_STUB)
         (void) ngx_atomic_fetch_add(ngx_stat_active, 1);
 #endif
 
+        // * create pool when accept connection
         c->pool = ngx_create_pool(ls->pool_size, ev->log);
         if (c->pool == NULL) {
             ngx_close_accepted_connection(c);
@@ -642,7 +663,8 @@ ngx_event_recvmsg(ngx_event_t *ev)
 
 #endif
 
-
+// Annotate:
+//  * when event { accept_mutext on; }
 ngx_int_t
 ngx_trylock_accept_mutex(ngx_cycle_t *cycle)
 {
@@ -680,7 +702,8 @@ ngx_trylock_accept_mutex(ngx_cycle_t *cycle)
     return NGX_OK;
 }
 
-
+// Annotate:
+//  1. re-add event
 static ngx_int_t
 ngx_enable_accept_events(ngx_cycle_t *cycle)
 {
@@ -693,6 +716,7 @@ ngx_enable_accept_events(ngx_cycle_t *cycle)
 
         c = ls[i].connection;
 
+        // * skip NULL connection and active read event connection
         if (c == NULL || c->read->active) {
             continue;
         }
@@ -705,7 +729,9 @@ ngx_enable_accept_events(ngx_cycle_t *cycle)
     return NGX_OK;
 }
 
-
+// Annotate:
+//  * skip if enable reuseport
+//  * del event
 static ngx_int_t
 ngx_disable_accept_events(ngx_cycle_t *cycle, ngx_uint_t all)
 {
@@ -746,6 +772,11 @@ ngx_disable_accept_events(ngx_cycle_t *cycle, ngx_uint_t all)
 }
 
 
+// Annotate:
+//  1. add ngx_connection_t info free_connections_queue
+//  2. close socket fd, if object isn't shared
+//  3. destroy pool
+//  4. update status info
 static void
 ngx_close_accepted_connection(ngx_connection_t *c)
 {
@@ -761,10 +792,12 @@ ngx_close_accepted_connection(ngx_connection_t *c)
                       ngx_close_socket_n " failed");
     }
 
+    // * destroy pool
     if (c->pool) {
         ngx_destroy_pool(c->pool);
     }
 
+    // * update status info
 #if (NGX_STAT_STUB)
     (void) ngx_atomic_fetch_add(ngx_stat_active, -1);
 #endif

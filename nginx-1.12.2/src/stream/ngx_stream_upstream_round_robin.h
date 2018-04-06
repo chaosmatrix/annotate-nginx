@@ -16,6 +16,8 @@
 
 typedef struct ngx_stream_upstream_rr_peer_s   ngx_stream_upstream_rr_peer_t;
 
+// Annotate:
+//  * peer info
 struct ngx_stream_upstream_rr_peer_s {
     struct sockaddr                 *sockaddr;
     socklen_t                        socklen;
@@ -26,6 +28,8 @@ struct ngx_stream_upstream_rr_peer_s {
     ngx_int_t                        effective_weight;
     ngx_int_t                        weight;
 
+    // * current conns
+    // * max conns
     ngx_uint_t                       conns;
     ngx_uint_t                       max_conns;
 
@@ -56,9 +60,13 @@ struct ngx_stream_upstream_rr_peer_s {
 
 typedef struct ngx_stream_upstream_rr_peers_s  ngx_stream_upstream_rr_peers_t;
 
+// Annotate:
+//  *
 struct ngx_stream_upstream_rr_peers_s {
+    // * Upstream Server number
     ngx_uint_t                       number;
 
+    // * Define zone in upstream {}
 #if (NGX_STREAM_UPSTREAM_ZONE)
     ngx_slab_pool_t                 *shpool;
     ngx_atomic_t                     rwlock;

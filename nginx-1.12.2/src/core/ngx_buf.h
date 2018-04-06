@@ -17,16 +17,25 @@ typedef void *            ngx_buf_tag_t;
 
 typedef struct ngx_buf_s  ngx_buf_t;
 
+// Annotate:
+//  *
 struct ngx_buf_s {
+    // * start of buf
     u_char          *pos;
+    // * end of buf
     u_char          *last;
+    // * start of file
     off_t            file_pos;
+    // * end of file
     off_t            file_last;
 
     u_char          *start;         /* start of buffer */
     u_char          *end;           /* end of buffer */
+    // * module tag that ngx_buf belong
     ngx_buf_tag_t    tag;
+    // * refer by ngx_buf
     ngx_file_t      *file;
+    // * aka. temp buf
     ngx_buf_t       *shadow;
 
 
@@ -56,6 +65,8 @@ struct ngx_buf_s {
 };
 
 
+// Annotate:
+//  * one-way link list
 struct ngx_chain_s {
     ngx_buf_t    *buf;
     ngx_chain_t  *next;

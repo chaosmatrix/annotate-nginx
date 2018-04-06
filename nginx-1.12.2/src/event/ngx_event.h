@@ -27,24 +27,37 @@ typedef struct {
 #endif
 
 
+// Annotate:
+//  * 
 struct ngx_event_s {
+    // * object that assciate with event
+    //      * ngx_connection_t , default
+    //      * ngx_event_aio_t , if enable aio
     void            *data;
 
+    // * enable write, aka. enable send data
     unsigned         write:1;
 
+    // * enable to accpet incoming connection, aka. established connection
+    // * only ngx_listening_t in ngx_cycle_t -> listening shoud be set as 1
+    // * aka. enable read
     unsigned         accept:1;
 
+    // * event is expired ?
     /* used to detect the stale events in kqueue and epoll */
     unsigned         instance:1;
 
+    // * connection active or not
     /*
      * the event was passed or would be passed to a kernel;
      * in aio mode - operation was posted.
      */
     unsigned         active:1;
 
+    // * disable event, only work in kqueue/rtsig
     unsigned         disabled:1;
 
+    // * event ready to be handle by consumer
     /* the ready event; in aio mode 0 means that no operation can be posted */
     unsigned         ready:1;
 
@@ -56,18 +69,25 @@ struct ngx_event_s {
     unsigned         eof:1;
     unsigned         error:1;
 
+    // * event timeout, notify consumer to handle it
     unsigned         timedout:1;
+    // * event in timer
     unsigned         timer_set:1;
 
+    // * delay handle event
+    // * for limit_req/limit_conn
     unsigned         delayed:1;
 
+    // * NGX_HAVE_DEFERRED_ACCEPT
     unsigned         deferred_accept:1;
 
     /* the pending eof reported by kqueue, epoll or in aio chain operation */
     unsigned         pending_eof:1;
 
+    // * post event ready to be handle
     unsigned         posted:1;
 
+    // * event already closed, didn't use by epoll
     unsigned         closed:1;
 
     /* to test on worker exit */
@@ -104,6 +124,9 @@ struct ngx_event_s {
 #if (NGX_HAVE_KQUEUE) || (NGX_HAVE_IOCP)
     int              available;
 #else
+    // * epoll, associate with config option event { multi_accpet }
+    // * epoll, accept how many connection one time (established connection)
+    // * 1 is equal event { multi_accept on; }
     unsigned         available:1;
 #endif
 
@@ -118,6 +141,7 @@ struct ngx_event_s {
 
     ngx_log_t       *log;
 
+    // * timer node, red-black tree
     ngx_rbtree_node_t   timer;
 
     /* the posted queue */
@@ -174,21 +198,29 @@ struct ngx_event_aio_s {
 #endif
 
 
+// Annotate:
+//  * 
 typedef struct {
+    // * add/del event
     ngx_int_t  (*add)(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags);
     ngx_int_t  (*del)(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags);
 
+    // * enable/disable event
     ngx_int_t  (*enable)(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags);
     ngx_int_t  (*disable)(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags);
 
+    // * add/del ngx_connection, continue monitor read/write event
     ngx_int_t  (*add_conn)(ngx_connection_t *c);
     ngx_int_t  (*del_conn)(ngx_connection_t *c, ngx_uint_t flags);
 
+    // * only work in multi-thread 
     ngx_int_t  (*notify)(ngx_event_handler_pt handler);
 
+    // * handle event
     ngx_int_t  (*process_events)(ngx_cycle_t *cycle, ngx_msec_t timer,
                                  ngx_uint_t flags);
 
+    // * call while init/done event module
     ngx_int_t  (*init)(ngx_cycle_t *cycle, ngx_msec_t timer);
     void       (*done)(ngx_cycle_t *cycle);
 } ngx_event_actions_t;
@@ -309,6 +341,9 @@ extern ngx_uint_t            ngx_use_epoll_rdhup;
 
 
 #if (NGX_HAVE_EPOLL) && !(NGX_HAVE_EPOLLRDHUP)
+// Annotate:
+//  * Stream socket peer closed connection,
+//  * or shut down writing half of connection
 #define EPOLLRDHUP         0
 #endif
 
@@ -367,6 +402,14 @@ extern ngx_uint_t            ngx_use_epoll_rdhup;
 #define NGX_ONESHOT_EVENT  EPOLLONESHOT
 #endif
 
+// Annotate:
+//  * man epoll_ct
+//      * usefull for avoiding thundering herd problems
+//      * When a wakeup event occurs and multiple epoll file descriptors 
+//      * are attached to the same target file using EPOLLEXCLUSIVE,
+//      * one or more of the epoll file descriptors
+//      * will receive an event with epoll_wait(2)
+//  * if not set, default all epoll fd will be wakeup
 #if (NGX_HAVE_EPOLLEXCLUSIVE)
 #define NGX_EXCLUSIVE_EVENT  EPOLLEXCLUSIVE
 #endif
@@ -437,7 +480,10 @@ extern ngx_os_io_t  ngx_io;
 #define NGX_EVENT_CONF        0x02000000
 
 
+// Annotate:
+//  *
 typedef struct {
+    // * worker_connections
     ngx_uint_t    connections;
     ngx_uint_t    use;
 
@@ -454,10 +500,15 @@ typedef struct {
 } ngx_event_conf_t;
 
 
+// Annotate:
+//  * 
 typedef struct {
+    // * event name
     ngx_str_t              *name;
 
+    // * store event config before parsing event{}
     void                 *(*create_conf)(ngx_cycle_t *cycle);
+    // * process event config after parsing event{}
     char                 *(*init_conf)(ngx_cycle_t *cycle, void *conf);
 
     ngx_event_actions_t     actions;
@@ -475,6 +526,8 @@ extern ngx_msec_t             ngx_accept_mutex_delay;
 extern ngx_int_t              ngx_accept_disabled;
 
 
+// Annotate:
+//  * nginx status module collected info
 #if (NGX_STAT_STUB)
 
 extern ngx_atomic_t  *ngx_stat_accepted;

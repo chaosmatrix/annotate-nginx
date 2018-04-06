@@ -28,7 +28,8 @@ ngx_event_timer_init(ngx_log_t *log)
     return NGX_OK;
 }
 
-
+// Annotate:
+//  * O(logn)
 ngx_msec_t
 ngx_event_find_timer(void)
 {

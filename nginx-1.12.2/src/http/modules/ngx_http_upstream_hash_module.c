@@ -436,6 +436,8 @@ ngx_http_upstream_find_chash_point(ngx_http_upstream_chash_points_t *points,
     i = 0;
     j = points->number;
 
+    // Annotate:
+    //  * binary search
     while (i < j) {
         k = (i + j) / 2;
 
@@ -450,6 +452,7 @@ ngx_http_upstream_find_chash_point(ngx_http_upstream_chash_points_t *points,
         }
     }
 
+    // * default return first server
     return i;
 }
 

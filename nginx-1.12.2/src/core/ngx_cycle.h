@@ -34,7 +34,8 @@ struct ngx_shm_zone_s {
     ngx_uint_t                noreuse;  /* unsigned  noreuse:1; */
 };
 
-
+// Annotate:
+//  *
 struct ngx_cycle_s {
     void                  ****conf_ctx;
     ngx_pool_t               *pool;
@@ -44,17 +45,23 @@ struct ngx_cycle_s {
 
     ngx_uint_t                log_use_stderr;  /* unsigned  log_use_stderr:1; */
 
+    // * one ngx_connection_t present as one socket fd
+    // * array contain all ngx_connection_t
     ngx_connection_t        **files;
+    // * free ngx_connection_t, can be use to handle new request
     ngx_connection_t         *free_connections;
+    // * number of free ngx_connection_t
     ngx_uint_t                free_connection_n;
 
     ngx_module_t            **modules;
     ngx_uint_t                modules_n;
     ngx_uint_t                modules_used;    /* unsigned  modules_used:1; */
 
+    // * ngx_connection_t->resuable == 1
     ngx_queue_t               reusable_connections_queue;
     ngx_uint_t                reusable_connections_n;
 
+    // * ngx_listening_t array
     ngx_array_t               listening;
     ngx_array_t               paths;
 
@@ -65,7 +72,9 @@ struct ngx_cycle_s {
     ngx_list_t                open_files;
     ngx_list_t                shared_memory;
 
+    // * all ngx_connection_t of current worker
     ngx_uint_t                connection_n;
+    // * size of ngx_cycle->file
     ngx_uint_t                files_n;
 
     ngx_connection_t         *connections;

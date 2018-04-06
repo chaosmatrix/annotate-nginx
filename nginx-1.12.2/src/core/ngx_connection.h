@@ -122,7 +122,11 @@ typedef enum {
 #define NGX_SSL_BUFFERED       0x01
 #define NGX_HTTP_V2_BUFFERED   0x02
 
-
+// Annotate:
+//  * typedef struct ngx_connection_s      ngx_connection_t;
+//  * a ngx_connection_t present as a connection object in connection pool
+//  * one worker_connections -> one ngx_connection_s -> one socket fd
+//  * worker_process:worker_connections:ngx_connection_s:socket_fd = 1:m:m:m
 struct ngx_connection_s {
     void               *data;
     ngx_event_t        *read;
@@ -130,25 +134,31 @@ struct ngx_connection_s {
 
     ngx_socket_t        fd;
 
+    // * recv/send data flow
     ngx_recv_pt         recv;
     ngx_send_pt         send;
     ngx_recv_chain_pt   recv_chain;
     ngx_send_chain_pt   send_chain;
 
+    // * ngx_listening_t object that ngx_connection_s associate with
     ngx_listening_t    *listening;
 
     off_t               sent;
 
     ngx_log_t          *log;
 
+    // * create after connection accept, aka. established for tcp-state
+    // * determine by listening.pool_size
     ngx_pool_t         *pool;
 
     int                 type;
 
+    // * client addr info
     struct sockaddr    *sockaddr;
     socklen_t           socklen;
     ngx_str_t           addr_text;
 
+    // * proxy_protocol
     ngx_str_t           proxy_protocol_addr;
     in_port_t           proxy_protocol_port;
 
@@ -156,15 +166,23 @@ struct ngx_connection_s {
     ngx_ssl_connection_t  *ssl;
 #endif
 
+    // * local addr info
     struct sockaddr    *local_sockaddr;
     socklen_t           local_socklen;
 
+    // * buffer data recv from client
+    // * http module: client_header_buffer_size ~ large_client_header_buffers
     ngx_buf_t          *buffer;
 
+    // * use to add current connection object into reusable_connections_queue
+    // * add as doubly link list
     ngx_queue_t         queue;
 
+    // * used times
+    // * incr 1 every time, establish/accept connection
     ngx_atomic_uint_t   number;
 
+    // * the number of request has been handle
     ngx_uint_t          requests;
 
     unsigned            buffered:8;
@@ -173,15 +191,23 @@ struct ngx_connection_s {
 
     unsigned            timedout:1;
     unsigned            error:1;
+    // * ngx_connection_t associate fd/pool already destroy
+    // * object remain, will add into free_connection_queue
     unsigned            destroyed:1;
 
+    // * connection status
+    // * idle -> should be closed after idle timeout
+    // * reuseable -> 
+    // * close -> 
     unsigned            idle:1;
     unsigned            reusable:1;
     unsigned            close:1;
     unsigned            shared:1;
 
+    // * TCP
     unsigned            sendfile:1;
     unsigned            sndlowat:1;
+    // * disable default
     unsigned            tcp_nodelay:2;   /* ngx_connection_tcp_nodelay_e */
     unsigned            tcp_nopush:2;    /* ngx_connection_tcp_nopush_e */
 

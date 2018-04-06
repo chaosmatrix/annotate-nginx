@@ -121,6 +121,8 @@ ngx_http_upstream_init_ip_hash_peer(ngx_http_request_t *r,
     case AF_INET:
         sin = (struct sockaddr_in *) r->connection->sockaddr;
         iphp->addr = (u_char *) &sin->sin_addr.s_addr;
+        // Annotate:
+        //  * only consider  3 * 8 bit
         iphp->addrlen = 3;
         break;
 
@@ -128,12 +130,16 @@ ngx_http_upstream_init_ip_hash_peer(ngx_http_request_t *r,
     case AF_INET6:
         sin6 = (struct sockaddr_in6 *) r->connection->sockaddr;
         iphp->addr = (u_char *) &sin6->sin6_addr.s6_addr;
+        // Annotate:
+        //  * only consider 16 * 8 bit
         iphp->addrlen = 16;
         break;
 #endif
 
     default:
         iphp->addr = ngx_http_upstream_ip_hash_pseudo_addr;
+        // Annotate:
+        //  * unix socket domain ?
         iphp->addrlen = 3;
     }
 

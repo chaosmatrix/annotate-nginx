@@ -344,6 +344,8 @@ ngx_stream_upstream_create_round_robin_peer(ngx_stream_session_t *s,
     peers->number = ur->naddrs;
     peers->name = &ur->host;
 
+    // Annotate:
+    //  * server is ip address
     if (ur->sockaddr) {
         peer[0].sockaddr = ur->sockaddr;
         peer[0].socklen = ur->socklen;
@@ -357,6 +359,7 @@ ngx_stream_upstream_create_round_robin_peer(ngx_stream_session_t *s,
         peers->peer = peer;
 
     } else {
+        //  * server is domain, resolve to more than one ip address
         peerp = &peers->peer;
 
         for (i = 0; i < ur->naddrs; i++) {

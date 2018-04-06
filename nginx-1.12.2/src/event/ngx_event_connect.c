@@ -16,7 +16,17 @@ static ngx_int_t ngx_event_connect_set_transparent(ngx_peer_connection_t *pc,
     ngx_socket_t s);
 #endif
 
-
+// Annotate:
+//  * get connection from free_connection_pool
+//  * set socket fd attrs
+//      * SO_RCVBUF
+//      * IP_TRANSPARENT
+//      * FIONBIO nonbloking
+//      * SO_REUSEADDR for UDP only
+//      * disable tcp_nopush, tcp_nodelay for unix domain socket
+//  * connect peer
+//  * add event
+//  * recycle ngx_connection_t if error ocurr
 ngx_int_t
 ngx_event_connect_peer(ngx_peer_connection_t *pc)
 {
@@ -31,6 +41,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
     ngx_event_t       *rev, *wev;
     ngx_connection_t  *c;
 
+    // * get peer connection from connection pool
     rc = pc->get(pc, pc->data);
     if (rc != NGX_OK) {
         return rc;
@@ -50,6 +61,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
     }
 
 
+    // * get connection from free_connection_pool
     c = ngx_get_connection(s, pc->log);
 
     if (c == NULL) {
@@ -63,6 +75,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
 
     c->type = type;
 
+    // * set recv buf
     if (pc->rcvbuf) {
         if (setsockopt(s, SOL_SOCKET, SO_RCVBUF,
                        (const void *) &pc->rcvbuf, sizeof(int)) == -1)
@@ -73,6 +86,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
         }
     }
 
+    // * socket must nonblocking
     if (ngx_nonblocking(s) == -1) {
         ngx_log_error(NGX_LOG_ALERT, pc->log, ngx_socket_errno,
                       ngx_nonblocking_n " failed");
@@ -82,6 +96,8 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
 
     if (pc->local) {
 
+    // * enable IP_TRANSPARENT
+    // * nginx config option :  proxy_bind [address] transparent;
 #if (NGX_HAVE_TRANSPARENT_PROXY)
         if (pc->transparent) {
             if (ngx_event_connect_set_transparent(pc, s) != NGX_OK) {
@@ -91,6 +107,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
 #endif
 
 #if (NGX_HAVE_IP_BIND_ADDRESS_NO_PORT || NGX_LINUX)
+        // * get local port
         port = ngx_inet_get_port(pc->local->sockaddr);
 #endif
 
@@ -122,6 +139,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
 
 #if (NGX_LINUX)
 
+        // * LINUX: set SO_REUSEADDR
         if (pc->type == SOCK_DGRAM && port != 0) {
             int  reuse_addr = 1;
 
@@ -177,10 +195,12 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
     rev->log = pc->log;
     wev->log = pc->log;
 
+    //
     pc->connection = c;
 
     c->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
 
+    // * add event
     if (ngx_add_conn) {
         if (ngx_add_conn(c) == NGX_ERROR) {
             goto failed;
@@ -190,6 +210,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, pc->log, 0,
                    "connect to %V, fd:%d #%uA", pc->name, s, c->number);
 
+    // * connect peer
     rc = connect(s, pc->sockaddr, pc->socklen);
 
     if (rc == -1) {
@@ -317,6 +338,11 @@ failed:
 
 #if (NGX_HAVE_TRANSPARENT_PROXY)
 
+// Annotate:
+//  * enable IP_TRANSPARENT
+//      * proxy_bind [address] transparent;
+//  * only work for AF_INET && AF_INET6
+//  * if unix domain socket, slice ignore
 static ngx_int_t
 ngx_event_connect_set_transparent(ngx_peer_connection_t *pc, ngx_socket_t s)
 {
