@@ -331,6 +331,7 @@ ngx_event_accept(ngx_event_t *ev)
         log->data = NULL;
         log->handler = NULL;
 
+        // * call ngx_listening_t handler to handle connection
         ls->handler(c);
 
         if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
@@ -665,6 +666,7 @@ ngx_event_recvmsg(ngx_event_t *ev)
 
 // Annotate:
 //  * when event { accept_mutext on; }
+//  * nonblocking lock
 ngx_int_t
 ngx_trylock_accept_mutex(ngx_cycle_t *cycle)
 {
@@ -677,12 +679,15 @@ ngx_trylock_accept_mutex(ngx_cycle_t *cycle)
             return NGX_OK;
         }
 
+        // * add all events into current worker's event module
         if (ngx_enable_accept_events(cycle) == NGX_ERROR) {
             ngx_shmtx_unlock(&ngx_accept_mutex);
             return NGX_ERROR;
         }
 
+        // * all events has been add
         ngx_accept_events = 0;
+        // * hold mutex
         ngx_accept_mutex_held = 1;
 
         return NGX_OK;
@@ -691,6 +696,7 @@ ngx_trylock_accept_mutex(ngx_cycle_t *cycle)
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                    "accept mutex lock failed: %ui", ngx_accept_mutex_held);
 
+    // * handle unexpect set ngx_accept_mutext_held
     if (ngx_accept_mutex_held) {
         if (ngx_disable_accept_events(cycle, 0) == NGX_ERROR) {
             return NGX_ERROR;

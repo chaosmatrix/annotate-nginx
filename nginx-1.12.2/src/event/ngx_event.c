@@ -189,19 +189,27 @@ ngx_module_t  ngx_event_core_module = {
     NGX_MODULE_V1_PADDING
 };
 
-
+// Annotate:
+//  * use two douby link list to reduce the time that worker hold mutex
+//      * ngx_posted_accept_events
+//          * need to hold mutex
+//      * ngx_posted_events
+//          * didn't need to hold mutex
+//  * handle expired timer event, between handle two events
 void
 ngx_process_events_and_timers(ngx_cycle_t *cycle)
 {
     ngx_uint_t  flags;
     ngx_msec_t  timer, delta;
 
+    // * timer_resolution
     if (ngx_timer_resolution) {
         timer = NGX_TIMER_INFINITE;
         flags = 0;
 
     } else {
         timer = ngx_event_find_timer();
+        // * need to update time
         flags = NGX_UPDATE_TIME;
 
 #if (NGX_WIN32)
@@ -215,11 +223,14 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
 #endif
     }
 
+    // * accept_mutex on
     if (ngx_use_accept_mutex) {
+        // * need load balance between worker ?
         if (ngx_accept_disabled > 0) {
             ngx_accept_disabled--;
 
         } else {
+            // * try to get lock, avoid thundering herd problem
             if (ngx_trylock_accept_mutex(cycle) == NGX_ERROR) {
                 return;
             }
@@ -228,6 +239,7 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
                 flags |= NGX_POST_EVENTS;
 
             } else {
+                // * next time, worker permitted to try to get lock
                 if (timer == NGX_TIMER_INFINITE
                     || timer > ngx_accept_mutex_delay)
                 {
@@ -237,6 +249,7 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
         }
     }
 
+    // * record current time
     delta = ngx_current_msec;
 
     (void) ngx_process_events(cycle, timer, flags);
@@ -246,16 +259,20 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                    "timer delta: %M", delta);
 
+    // * process ngx_posted_accept_events
     ngx_event_process_posted(cycle, &ngx_posted_accept_events);
 
+    // * unlock
     if (ngx_accept_mutex_held) {
         ngx_shmtx_unlock(&ngx_accept_mutex);
     }
 
+    // * timeout during process posted event
     if (delta) {
+        // * handle timeout event
         ngx_event_expire_timers();
     }
-
+    // * process ngx_posted_events
     ngx_event_process_posted(cycle, &ngx_posted_events);
 }
 

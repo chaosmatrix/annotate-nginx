@@ -97,6 +97,8 @@ static uint32_t  usual[] = {
 
 #endif
 
+// Annotate:
+//  *
 
 /* gcc, icc, msvc and others compile these switches as an jump table */
 
@@ -104,6 +106,7 @@ ngx_int_t
 ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
 {
     u_char  c, ch, *p, *m;
+    // * stat machine
     enum {
         sw_start = 0,
         sw_method,
@@ -1590,6 +1593,8 @@ args:
 }
 
 
+// Annotate:
+//  *
 ngx_int_t
 ngx_http_parse_status_line(ngx_http_request_t *r, ngx_buf_t *b,
     ngx_http_status_t *status)
@@ -1781,6 +1786,7 @@ ngx_http_parse_status_line(ngx_http_request_t *r, ngx_buf_t *b,
             status->end = p - 1;
             switch (ch) {
             case LF:
+                // * CRLF
                 goto done;
             default:
                 return NGX_ERROR;

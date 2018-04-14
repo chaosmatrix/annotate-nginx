@@ -195,6 +195,8 @@ ngx_http_header_t  ngx_http_headers_in[] = {
 };
 
 
+// Annotate:
+//  *
 void
 ngx_http_init_connection(ngx_connection_t *c)
 {
@@ -313,6 +315,7 @@ ngx_http_init_connection(ngx_connection_t *c)
     c->log_error = NGX_ERROR_INFO;
 
     rev = c->read;
+    // * wait client_header_timeout
     rev->handler = ngx_http_wait_request_handler;
     c->write->handler = ngx_http_empty_handler;
 
@@ -352,6 +355,7 @@ ngx_http_init_connection(ngx_connection_t *c)
         c->log->action = "reading PROXY protocol";
     }
 
+    // * data already recv
     if (rev->ready) {
         /* the deferred accept(), iocp */
 
@@ -916,6 +920,9 @@ ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
 #endif
 
 
+// Annotate:
+//  * call many times until process completely request line
+//      * via read event and state machine
 static void
 ngx_http_process_request_line(ngx_event_t *rev)
 {
@@ -931,6 +938,8 @@ ngx_http_process_request_line(ngx_event_t *rev)
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, rev->log, 0,
                    "http process request line");
 
+    // * event timeout
+    //      * client_header_timeout
     if (rev->timedout) {
         ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
         c->timedout = 1;
@@ -979,6 +988,7 @@ ngx_http_process_request_line(ngx_event_t *rev)
                 host.len = r->host_end - r->host_start;
                 host.data = r->host_start;
 
+                // * validate host, and make sure Host all lower
                 rc = ngx_http_validate_host(&host, r->pool, 0);
 
                 if (rc == NGX_DECLINED) {
@@ -1025,6 +1035,7 @@ ngx_http_process_request_line(ngx_event_t *rev)
             c->log->action = "reading client request headers";
 
             rev->handler = ngx_http_process_request_headers;
+            // * callback
             ngx_http_process_request_headers(rev);
 
             return;
@@ -1036,6 +1047,7 @@ ngx_http_process_request_line(ngx_event_t *rev)
 
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
                           ngx_http_client_errors[rc - NGX_HTTP_CLIENT_ERROR]);
+            // * return 400
             ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
             return;
         }
@@ -1044,6 +1056,7 @@ ngx_http_process_request_line(ngx_event_t *rev)
 
         if (r->header_in->pos == r->header_in->end) {
 
+            // * large_client_header_buffers
             rv = ngx_http_alloc_large_header_buffer(r, 1);
 
             if (rv == NGX_ERROR) {
@@ -1057,6 +1070,7 @@ ngx_http_process_request_line(ngx_event_t *rev)
 
                 ngx_log_error(NGX_LOG_INFO, c->log, 0,
                               "client sent too long URI");
+                // * return 414
                 ngx_http_finalize_request(r, NGX_HTTP_REQUEST_URI_TOO_LARGE);
                 return;
             }
@@ -1425,6 +1439,11 @@ ngx_http_read_request_header(ngx_http_request_t *r)
 }
 
 
+// Annotate:
+//  * max limit: large_client_header_buffers
+//  * 414 (Request-URI Too Large) : A request line exceed the size of one buffer
+//  * 400 (Bad Request) : A request header field exceed the size of one buffer
+//  * buf release while request complete
 static ngx_int_t
 ngx_http_alloc_large_header_buffer(ngx_http_request_t *r,
     ngx_uint_t request_line)
@@ -1452,6 +1471,9 @@ ngx_http_alloc_large_header_buffer(ngx_http_request_t *r,
 
     cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
 
+    // * nginx config: large_client_header_buffers
+    //      * defaule: large_client_header_buffers 4 8k
+    // * max buffer size is  large_client_header_buffers
     if (r->state != 0
         && (size_t) (r->header_in->pos - old)
                                      >= cscf->large_client_header_buffers.size)
@@ -1475,6 +1497,7 @@ ngx_http_alloc_large_header_buffer(ngx_http_request_t *r,
 
         b = ngx_create_temp_buf(r->connection->pool,
                                 cscf->large_client_header_buffers.size);
+        // * faile to alloc buf
         if (b == NULL) {
             return NGX_ERROR;
         }
@@ -1924,6 +1947,8 @@ ngx_http_process_request(ngx_http_request_t *r)
 }
 
 
+// Annotate:
+//  *
 static ngx_int_t
 ngx_http_validate_host(ngx_str_t *host, ngx_pool_t *pool, ngx_uint_t alloc)
 {
@@ -1950,6 +1975,7 @@ ngx_http_validate_host(ngx_str_t *host, ngx_pool_t *pool, ngx_uint_t alloc)
 
         case '.':
             if (dot_pos == i - 1) {
+                // * startswith '.'
                 return NGX_DECLINED;
             }
             dot_pos = i;
@@ -1981,6 +2007,7 @@ ngx_http_validate_host(ngx_str_t *host, ngx_pool_t *pool, ngx_uint_t alloc)
         default:
 
             if (ngx_path_separator(ch)) {
+                // * has '/'
                 return NGX_DECLINED;
             }
 
@@ -2000,6 +2027,7 @@ ngx_http_validate_host(ngx_str_t *host, ngx_pool_t *pool, ngx_uint_t alloc)
         return NGX_DECLINED;
     }
 
+    // * Upper To Lower Host
     if (alloc) {
         host->data = ngx_pnalloc(pool, host_len);
         if (host->data == NULL) {
@@ -2098,6 +2126,8 @@ ngx_http_set_virtual_server(ngx_http_request_t *r, ngx_str_t *host)
 }
 
 
+// Annotate:
+//  *
 static ngx_int_t
 ngx_http_find_virtual_server(ngx_connection_t *c,
     ngx_http_virtual_names_t *virtual_names, ngx_str_t *host,
@@ -2109,6 +2139,7 @@ ngx_http_find_virtual_server(ngx_connection_t *c,
         return NGX_DECLINED;
     }
 
+    // * get maching server_name, O(3)
     cscf = ngx_hash_find_combined(&virtual_names->names,
                                   ngx_hash_key(host->data, host->len),
                                   host->data, host->len);

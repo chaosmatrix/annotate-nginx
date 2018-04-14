@@ -206,7 +206,11 @@ ngx_hash_find_wc_tail(ngx_hash_wildcard_t *hwc, u_char *name, size_t len)
     return hwc->value;
 }
 
-
+// Annotate:
+//  * priority:
+//      * exact match
+//      * startswith wildcard
+//      * endswith wildcard
 void *
 ngx_hash_find_combined(ngx_hash_combined_t *hash, ngx_uint_t key, u_char *name,
     size_t len)
@@ -214,6 +218,7 @@ ngx_hash_find_combined(ngx_hash_combined_t *hash, ngx_uint_t key, u_char *name,
     void  *value;
 
     if (hash->hash.buckets) {
+        // * exact match
         value = ngx_hash_find(&hash->hash, key, name, len);
 
         if (value) {
@@ -226,6 +231,7 @@ ngx_hash_find_combined(ngx_hash_combined_t *hash, ngx_uint_t key, u_char *name,
     }
 
     if (hash->wc_head && hash->wc_head->hash.buckets) {
+        // * startswith wildcard
         value = ngx_hash_find_wc_head(hash->wc_head, name, len);
 
         if (value) {
@@ -234,6 +240,7 @@ ngx_hash_find_combined(ngx_hash_combined_t *hash, ngx_uint_t key, u_char *name,
     }
 
     if (hash->wc_tail && hash->wc_tail->hash.buckets) {
+        // * endswith wildcard
         value = ngx_hash_find_wc_tail(hash->wc_tail, name, len);
 
         if (value) {
@@ -241,6 +248,7 @@ ngx_hash_find_combined(ngx_hash_combined_t *hash, ngx_uint_t key, u_char *name,
         }
     }
 
+    // * not found
     return NULL;
 }
 

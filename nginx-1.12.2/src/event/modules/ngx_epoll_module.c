@@ -779,7 +779,8 @@ ngx_epoll_notify(ngx_event_handler_pt handler)
 
 #endif
 
-
+// Annotate:
+//  *
 static ngx_int_t
 ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
 {
@@ -836,11 +837,14 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
     for (i = 0; i < events; i++) {
         c = event_list[i].data.ptr;
 
+        // * pointer's last bit always zero
         instance = (uintptr_t) c & 1;
         c = (ngx_connection_t *) ((uintptr_t) c & (uintptr_t) ~1);
 
         rev = c->read;
 
+        // * event associate connection_t's fd just re close then re-alocate
+        // * this event already timeout
         if (c->fd == -1 || rev->instance != instance) {
 
             /*

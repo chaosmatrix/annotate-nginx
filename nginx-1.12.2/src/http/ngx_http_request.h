@@ -361,6 +361,8 @@ typedef ngx_int_t (*ngx_http_handler_pt)(ngx_http_request_t *r);
 typedef void (*ngx_http_event_handler_pt)(ngx_http_request_t *r);
 
 
+// Annotate:
+//  *
 struct ngx_http_request_s {
     uint32_t                          signature;         /* "HTTP" */
 
@@ -390,6 +392,10 @@ struct ngx_http_request_s {
 
     ngx_http_request_body_t          *request_body;
 
+    // *  When lingering_close is in effect,
+    // * this directive specifies the maximum time during 
+    // * which nginx will process (read and ignore) additional data coming from a client.
+    // * After that, the connection will be closed, even if there will be more data. 
     time_t                            lingering_time;
     time_t                            start_sec;
     ngx_msec_t                        start_msec;
@@ -431,17 +437,22 @@ struct ngx_http_request_s {
     /* used to learn the Apache compatible response length without a header */
     size_t                            header_size;
 
+    // * http total length, include body content-length
     off_t                             request_length;
 
     ngx_uint_t                        err_status;
 
+    // * http v1 connection
     ngx_http_connection_t            *http_connection;
+    // * http v2
     ngx_http_v2_stream_t             *stream;
 
     ngx_http_log_handler_pt           log_handler;
 
+    // * clean resource after connection completely
     ngx_http_cleanup_t               *cleanup;
 
+    // * current request refer count
     unsigned                          count:16;
     unsigned                          subrequests:8;
     unsigned                          blocked:8;
@@ -467,7 +478,9 @@ struct ngx_http_request_s {
     unsigned                          add_uri_to_alias:1;
     unsigned                          valid_location:1;
     unsigned                          valid_unparsed_uri:1;
+    // * uri already rewrite
     unsigned                          uri_changed:1;
+    // * uri change times, default limit 10 times
     unsigned                          uri_changes:4;
 
     unsigned                          request_body_in_single_buf:1;
@@ -509,12 +522,16 @@ struct ngx_http_request_s {
 #endif
 
     unsigned                          pipeline:1;
+    // * use chunked encoding
     unsigned                          chunked:1;
     unsigned                          header_only:1;
     unsigned                          keepalive:1;
+    // * tcp define lingering_close
+    // * 1 means delay close connection, waite lingering_time
     unsigned                          lingering_close:1;
     unsigned                          discard_body:1;
     unsigned                          reading_body:1;
+    // * internal rewrite
     unsigned                          internal:1;
     unsigned                          error_page:1;
     unsigned                          filter_finalize:1;

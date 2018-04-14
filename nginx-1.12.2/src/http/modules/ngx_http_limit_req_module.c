@@ -40,8 +40,21 @@ typedef struct {
 } ngx_http_limit_req_ctx_t;
 
 
+// Annotate:
+//  *
 typedef struct {
     ngx_shm_zone_t              *shm_zone;
+    // * better set burst > rate / 1000 ?
+    // * burst value:
+    // * value in config: conf->burst, conf->rate
+    // * value in code: code->burst, code->rate
+    //      * code->rate = code.rate
+    //      * code->burst = conf->burst * 1000
+    //      * return NGX_BUSY: curr->rate > code->burst && curr->rate > code->rate
+    //      * return NGX_OK: curr -> rate < code ->rate || curr->rate < code->burst
+    //          * code -> rate < code -> burst
+    //          * conf -> rate < conf -> burst * 1000
+    //          * conf->burst > conf->rate / 1000
     /* integer value, 1 corresponds to 0.001 r/s */
     ngx_uint_t                   burst;
     ngx_uint_t                   nodelay; /* unsigned  nodelay:1 */
@@ -718,6 +731,8 @@ ngx_http_limit_req_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 }
 
 
+// Annotate:
+//  *
 static char *
 ngx_http_limit_req_zone(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
@@ -825,6 +840,7 @@ ngx_http_limit_req_zone(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
+    // * To r/ms
     ctx->rate = rate * 1000 / scale;
 
     shm_zone = ngx_shared_memory_add(cf, &name, size,
@@ -849,6 +865,8 @@ ngx_http_limit_req_zone(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
+// Annotate:
+//  *
 static char *
 ngx_http_limit_req(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
@@ -934,6 +952,7 @@ ngx_http_limit_req(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     limit->shm_zone = shm_zone;
+    // * multi 1000
     limit->burst = burst * 1000;
     limit->nodelay = nodelay;
 

@@ -30,6 +30,7 @@ ngx_event_timer_init(ngx_log_t *log)
 
 // Annotate:
 //  * O(logn)
+//  * find min timer -> recently timeout
 ngx_msec_t
 ngx_event_find_timer(void)
 {

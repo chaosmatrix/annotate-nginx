@@ -866,6 +866,10 @@ ngx_http_core_run_phases(ngx_http_request_t *r)
 }
 
 
+// Annotate:
+//  * NGX_HTTP_POST_READ_PHASE
+//  * handler or module may be callback
+//      * ngx_http_realip_module
 ngx_int_t
 ngx_http_core_generic_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
 {

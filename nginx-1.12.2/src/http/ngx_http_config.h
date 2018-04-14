@@ -14,23 +14,47 @@
 #include <ngx_http.h>
 
 
+// Annotate:
+//  * three array of pointer
 typedef struct {
+    //  * one element is one config options
+    //      * main {}
     void        **main_conf;
+    // * one element counld be a config options in
+    //      * main {}
+    //      * server {}
     void        **srv_conf;
+    // * one element could be a config options in
+    //      * main {}
+    //      * server {}
+    //      * location {}
     void        **loc_conf;
 } ngx_http_conf_ctx_t;
 
 
+// Annotate:
+//  * same config option appear on diferent config section,
+//  * different module can implement different oprations
+//      * local overwrite global
+//      * global overwrite local
+//      * merge all of them
+//      * ...
 typedef struct {
+    // * callback before parse http {}
     ngx_int_t   (*preconfiguration)(ngx_conf_t *cf);
+    // * callback after parse http {}
     ngx_int_t   (*postconfiguration)(ngx_conf_t *cf);
 
+    // * callback before parse main{}
     void       *(*create_main_conf)(ngx_conf_t *cf);
+    // * callback after parse main{}
     char       *(*init_main_conf)(ngx_conf_t *cf, void *conf);
 
+    // * server {}, merge http, main, server
     void       *(*create_srv_conf)(ngx_conf_t *cf);
     char       *(*merge_srv_conf)(ngx_conf_t *cf, void *prev, void *conf);
 
+    // * location {}, merge http, main, server, location
     void       *(*create_loc_conf)(ngx_conf_t *cf);
     char       *(*merge_loc_conf)(ngx_conf_t *cf, void *prev, void *conf);
 } ngx_http_module_t;
@@ -52,6 +76,8 @@ typedef struct {
 #define NGX_HTTP_LOC_CONF_OFFSET   offsetof(ngx_http_conf_ctx_t, loc_conf)
 
 
+// * Annotate:
+//  * get main conf from ngx_cycle_t
 #define ngx_http_get_module_main_conf(r, module)                             \
     (r)->main_conf[module.ctx_index]
 #define ngx_http_get_module_srv_conf(r, module)  (r)->srv_conf[module.ctx_index]

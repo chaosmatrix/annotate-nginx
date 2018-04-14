@@ -640,6 +640,8 @@ ngx_http_send_error_page(ngx_http_request_t *r, ngx_http_err_page_t *err_page)
 }
 
 
+// Annotate:
+//  *
 static ngx_int_t
 ngx_http_send_special_response(ngx_http_request_t *r,
     ngx_http_core_loc_conf_t *clcf, ngx_uint_t err)
@@ -691,6 +693,10 @@ ngx_http_send_special_response(ngx_http_request_t *r,
         r->headers_out.content_length = NULL;
     }
 
+    // * clear http header:
+    //      * accept-range
+    //      * last-modified
+    //      * etag
     ngx_http_clear_accept_ranges(r);
     ngx_http_clear_last_modified(r);
     ngx_http_clear_etag(r);

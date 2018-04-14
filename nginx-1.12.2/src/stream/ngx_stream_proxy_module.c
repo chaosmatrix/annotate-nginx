@@ -727,6 +727,8 @@ ngx_stream_proxy_connect(ngx_stream_session_t *s)
 }
 
 
+// Annotate:
+//  *
 static void
 ngx_stream_proxy_init_upstream(ngx_stream_session_t *s)
 {
@@ -795,6 +797,7 @@ ngx_stream_proxy_init_upstream(ngx_stream_session_t *s)
         str.len = NGX_SOCKADDR_STRLEN;
         str.data = addr;
 
+        // * get local addr
         if (ngx_connection_local_sockaddr(pc, &str, 1) == NGX_OK) {
             handler = c->log->handler;
             c->log->handler = NULL;
@@ -887,8 +890,11 @@ ngx_stream_proxy_init_upstream(ngx_stream_session_t *s)
         u->proxy_protocol = 0;
     }
 
+    // * udp && proxy_responses 0
     if (c->type == SOCK_DGRAM && pscf->responses == 0) {
+        // * event not ready to be handle
         pc->read->ready = 0;
+        // * reach the end of data flow
         pc->read->eof = 1;
     }
 
@@ -897,6 +903,7 @@ ngx_stream_proxy_init_upstream(ngx_stream_session_t *s)
     pc->read->handler = ngx_stream_proxy_upstream_handler;
     pc->write->handler = ngx_stream_proxy_upstream_handler;
 
+    // * add event
     if (pc->read->ready || pc->read->eof) {
         ngx_post_event(pc->read, &ngx_posted_events);
     }
@@ -1589,6 +1596,7 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
                     }
                 }
 
+                // * get proxy_presonses
                 if (c->type == SOCK_DGRAM && ++u->responses == pscf->responses)
                 {
                     src->read->ready = 0;

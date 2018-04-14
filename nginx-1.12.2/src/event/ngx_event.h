@@ -57,7 +57,7 @@ struct ngx_event_s {
     // * disable event, only work in kqueue/rtsig
     unsigned         disabled:1;
 
-    // * event ready to be handle by consumer
+    // * 1 means event ready to be handle by consumer
     /* the ready event; in aio mode 0 means that no operation can be posted */
     unsigned         ready:1;
 
@@ -66,6 +66,7 @@ struct ngx_event_s {
     /* aio operation is complete */
     unsigned         complete:1;
 
+    // * reach the end of stream
     unsigned         eof:1;
     unsigned         error:1;
 

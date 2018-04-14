@@ -104,24 +104,39 @@ typedef struct {
     u_char                     addr[NGX_SOCKADDR_STRLEN + 1];
 } ngx_http_listen_opt_t;
 
-
+// Annotate:
+//  * http module handle phase, 11
 typedef enum {
+    // * after read completely http header
     NGX_HTTP_POST_READ_PHASE = 0,
 
+    // * before match location with uri, rewrite uri
     NGX_HTTP_SERVER_REWRITE_PHASE,
 
+    // * find match location
     NGX_HTTP_FIND_CONFIG_PHASE,
+    // * rewrite uri, 
+    //      * ngx_http_rewrite_module 
     NGX_HTTP_REWRITE_PHASE,
+    // * after uri rewrite
+    //      * detect rewrite-loop
+    //      * max rewrite-loop times 10, return 500 if exceed
     NGX_HTTP_POST_REWRITE_PHASE,
 
+    // * before ngx_http_access_module
     NGX_HTTP_PREACCESS_PHASE,
 
+    // * ngx_http_access_module
     NGX_HTTP_ACCESS_PHASE,
+    // * after access control, return response, if deny request
     NGX_HTTP_POST_ACCESS_PHASE,
 
+    // * implement try_files
     NGX_HTTP_TRY_FILES_PHASE,
+    // * process contect, aka http body
     NGX_HTTP_CONTENT_PHASE,
 
+    // * log
     NGX_HTTP_LOG_PHASE
 } ngx_http_phases;
 
@@ -270,14 +285,21 @@ typedef struct {
 } ngx_http_conf_port_t;
 
 
+// Annotate:
+//  *
 typedef struct {
     ngx_http_listen_opt_t      opt;
 
+    // * hash table for server_name
+    //      * exact match
+    //      * startswith wildcard
+    //      * endswith wildcard
     ngx_hash_t                 hash;
     ngx_hash_wildcard_t       *wc_head;
     ngx_hash_wildcard_t       *wc_tail;
 
 #if (NGX_PCRE)
+    // * regex
     ngx_uint_t                 nregex;
     ngx_http_server_name_t    *regex;
 #endif
@@ -306,6 +328,8 @@ typedef struct {
 } ngx_http_try_file_t;
 
 
+// Annotate:
+//  * location {} strcut
 struct ngx_http_core_loc_conf_s {
     ngx_str_t     name;          /* location name */
 
@@ -440,6 +464,7 @@ struct ngx_http_core_loc_conf_s {
     ngx_uint_t    types_hash_max_size;
     ngx_uint_t    types_hash_bucket_size;
 
+    // * doubly link list, contain all location {}  in current server{}
     ngx_queue_t  *locations;
 
 #if 0
@@ -458,13 +483,18 @@ typedef struct {
     ngx_queue_t                      list;
 } ngx_http_location_queue_t;
 
-
+// Annotate:
+//  * AVL Tree, O(logn)
 struct ngx_http_location_tree_node_s {
     ngx_http_location_tree_node_t   *left;
     ngx_http_location_tree_node_t   *right;
+
+    // * not exact match
     ngx_http_location_tree_node_t   *tree;
 
+    // * exact match, aka location = {}
     ngx_http_core_loc_conf_t        *exact;
+    // * regex match, aka. location / {}... etc
     ngx_http_core_loc_conf_t        *inclusive;
 
     u_char                           auto_redirect;

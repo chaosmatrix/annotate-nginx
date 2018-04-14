@@ -622,6 +622,8 @@ failed:
 }
 
 
+// Annotate:
+//  *
 static char *
 ngx_http_merge_locations(ngx_conf_t *cf, ngx_queue_t *locations,
     void **loc_conf, ngx_http_module_t *module, ngx_uint_t ctx_index)
@@ -645,6 +647,9 @@ ngx_http_merge_locations(ngx_conf_t *cf, ngx_queue_t *locations,
     {
         lq = (ngx_http_location_queue_t *) q;
 
+        // * priority: exact > inclusive
+        //      * exact : =
+        //      * inclusive: regular
         clcf = lq->exact ? lq->exact : lq->inclusive;
         ctx->loc_conf = clcf->loc_conf;
 
