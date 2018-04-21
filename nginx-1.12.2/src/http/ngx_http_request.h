@@ -9,6 +9,8 @@
 #define _NGX_HTTP_REQUEST_H_INCLUDED_
 
 
+// Annotate:
+//  * max internal rewrite uri
 #define NGX_HTTP_MAX_URI_CHANGES           10
 #define NGX_HTTP_MAX_SUBREQUESTS           50
 

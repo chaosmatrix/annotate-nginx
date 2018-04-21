@@ -461,7 +461,7 @@ ngx_stream_upstream_find_chash_point(ngx_stream_upstream_chash_points_t *points,
         }
     }
 
-    // * default return first
+    // * default return last not equal
     return i;
 }
 

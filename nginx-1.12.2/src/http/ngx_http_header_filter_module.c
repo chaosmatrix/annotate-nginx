@@ -152,6 +152,8 @@ ngx_http_header_out_t  ngx_http_headers_out[] = {
 };
 
 
+// Annotate:
+//  *
 static ngx_int_t
 ngx_http_header_filter(ngx_http_request_t *r)
 {
@@ -168,6 +170,7 @@ ngx_http_header_filter(ngx_http_request_t *r)
     ngx_http_core_srv_conf_t  *cscf;
     u_char                     addr[NGX_SOCKADDR_STRLEN];
 
+    // * if this header info is sending or sended
     if (r->header_sent) {
         return NGX_OK;
     }
@@ -178,15 +181,22 @@ ngx_http_header_filter(ngx_http_request_t *r)
         return NGX_OK;
     }
 
+    // * http_version lower than 1.0, don't send header
     if (r->http_version < NGX_HTTP_VERSION_10) {
         return NGX_OK;
     }
 
+    // * HEAD only response header, no body
     if (r->method == NGX_HTTP_HEAD) {
         r->header_only = 1;
     }
 
+    // * request with Last-modified header
     if (r->headers_out.last_modified_time != -1) {
+        // * status_code didn't satisfy
+        //      * 200
+        //      * 206, handle range header
+        //      * 304
         if (r->headers_out.status != NGX_HTTP_OK
             && r->headers_out.status != NGX_HTTP_PARTIAL_CONTENT
             && r->headers_out.status != NGX_HTTP_NOT_MODIFIED)
@@ -218,6 +228,7 @@ ngx_http_header_filter(ngx_http_request_t *r)
         {
             /* 2XX */
 
+            // * 204
             if (status == NGX_HTTP_NO_CONTENT) {
                 r->header_only = 1;
                 ngx_str_null(&r->headers_out.content_type);
@@ -278,6 +289,7 @@ ngx_http_header_filter(ngx_http_request_t *r)
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
+    // * set server_tokens, for security and privacy
     if (r->headers_out.server == NULL) {
         if (clcf->server_tokens == NGX_HTTP_SERVER_TOKENS_ON) {
             len += sizeof(ngx_http_server_full_string) - 1;
@@ -326,6 +338,7 @@ ngx_http_header_filter(ngx_http_request_t *r)
     {
         r->headers_out.location->hash = 0;
 
+        // * server_name_in_redirect
         if (clcf->server_name_in_redirect) {
             cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
             host = cscf->server_name;
@@ -388,6 +401,8 @@ ngx_http_header_filter(ngx_http_request_t *r)
          * Konqueror keeps the connection alive for about N seconds.
          */
 
+        // * so best Keep-Alive: timeout=65s ?
+        // * default 75s
         if (clcf->keepalive_header) {
             len += sizeof("Keep-Alive: timeout=") - 1 + NGX_TIME_T_LEN + 2;
         }
@@ -616,6 +631,7 @@ ngx_http_header_filter(ngx_http_request_t *r)
     out.buf = b;
     out.next = NULL;
 
+    // * send header
     return ngx_http_write_filter(r, &out);
 }
 

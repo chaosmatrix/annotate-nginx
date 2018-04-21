@@ -26,6 +26,8 @@ static ngx_int_t ngx_http_request_body_chunked_filter(ngx_http_request_t *r,
     ngx_chain_t *in);
 
 
+// Annotate:
+//  *
 ngx_int_t
 ngx_http_read_client_request_body(ngx_http_request_t *r,
     ngx_http_client_body_handler_pt post_handler)
@@ -54,6 +56,12 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
 #endif
 
     if (ngx_http_test_expect(r) != NGX_OK) {
+        // * can't satisfy Expect http Header
+        // * return 500 ?
+        // * rfc2616 Sec14.20
+        //      * If a server receives a request containing an Expect field 
+        //      * that includes an expectation-extension that it does not support,
+        //      * it MUST respond with a 417 (Expectation Failed) status
         rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
         goto done;
     }
@@ -79,12 +87,14 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
 
     r->request_body = rb;
 
+    // * chunked encode
     if (r->headers_in.content_length_n < 0 && !r->headers_in.chunked) {
         r->request_body_no_buffering = 0;
         post_handler(r);
         return NGX_OK;
     }
 
+    // * preread buf
     preread = r->header_in->last - r->header_in->pos;
 
     if (preread) {
@@ -507,6 +517,10 @@ ngx_http_write_request_body(ngx_http_request_t *r)
 }
 
 
+// Annotate:
+//  * r->headers_in.content_length_n
+//      * indicate how many data need to be discarded
+//      * 0 means all data has been discard
 ngx_int_t
 ngx_http_discard_request_body(ngx_http_request_t *r)
 {
@@ -558,6 +572,7 @@ ngx_http_discard_request_body(ngx_http_request_t *r)
     rc = ngx_http_read_discarded_request_body(r);
 
     if (rc == NGX_OK) {
+        // * use TCP RST to close connection immediately
         r->lingering_close = 0;
         return NGX_OK;
     }
@@ -797,6 +812,9 @@ ngx_http_discard_request_body_filter(ngx_http_request_t *r, ngx_buf_t *b)
 }
 
 
+// Annotate:
+//  * handle Expect header
+//  * ignore < 1.1
 static ngx_int_t
 ngx_http_test_expect(ngx_http_request_t *r)
 {
@@ -841,18 +859,24 @@ ngx_http_test_expect(ngx_http_request_t *r)
 }
 
 
+// Annotate:
+//  *
 static ngx_int_t
 ngx_http_request_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
     if (r->headers_in.chunked) {
+        // * chunked encode
         return ngx_http_request_body_chunked_filter(r, in);
 
     } else {
+        // * not chunked encode, must include Content-Length in http header
         return ngx_http_request_body_length_filter(r, in);
     }
 }
 
 
+// Annotate:
+//  * 
 static ngx_int_t
 ngx_http_request_body_length_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
@@ -864,6 +888,8 @@ ngx_http_request_body_length_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     rb = r->request_body;
 
+    // * rb->rest : how many data need to be read
+    //      * rb->rest = content-length - already_read_size
     if (rb->rest == -1) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "http request body content length filter");
@@ -923,6 +949,8 @@ ngx_http_request_body_length_filter(ngx_http_request_t *r, ngx_chain_t *in)
 }
 
 
+// Annotate:
+//  *
 static ngx_int_t
 ngx_http_request_body_chunked_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
@@ -983,6 +1011,7 @@ ngx_http_request_body_chunked_filter(ngx_http_request_t *r, ngx_chain_t *in)
                                   r->headers_in.content_length_n,
                                   rb->chunked->size);
 
+                    // * why lingering_close on ?
                     r->lingering_close = 1;
 
                     return NGX_HTTP_REQUEST_ENTITY_TOO_LARGE;

@@ -870,6 +870,9 @@ ngx_http_core_run_phases(ngx_http_request_t *r)
 //  * NGX_HTTP_POST_READ_PHASE
 //  * handler or module may be callback
 //      * ngx_http_realip_module
+//  * NGX_AGAIN
+//      * continue process
+//      * means request can't be done at this time/schedule
 ngx_int_t
 ngx_http_core_generic_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
 {
@@ -885,16 +888,19 @@ ngx_http_core_generic_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
 
     rc = ph->handler(r);
 
+    // * go into next phase
     if (rc == NGX_OK) {
         r->phase_handler = ph->next;
         return NGX_AGAIN;
     }
 
+    // * go into next handler, next callback function
     if (rc == NGX_DECLINED) {
         r->phase_handler++;
         return NGX_AGAIN;
     }
 
+    // * return process control to event module
     if (rc == NGX_AGAIN || rc == NGX_DONE) {
         return NGX_OK;
     }
@@ -1071,6 +1077,8 @@ ngx_http_core_post_rewrite_phase(ngx_http_request_t *r,
 }
 
 
+// Annotate:
+//  *
 ngx_int_t
 ngx_http_core_access_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
 {
@@ -1099,7 +1107,12 @@ ngx_http_core_access_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     if (clcf->satisfy == NGX_HTTP_SATISFY_ALL) {
-
+        // * satisfy all acl
+        //      * base auth
+        //      * allow/deny
+        //      * if/else
+        //      * ...
+        //  * go into nex handler
         if (rc == NGX_OK) {
             r->phase_handler++;
             return NGX_AGAIN;
@@ -1112,12 +1125,17 @@ ngx_http_core_access_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
             if (r->headers_out.www_authenticate) {
                 r->headers_out.www_authenticate->hash = 0;
             }
-
+            // * satisfy any, go into nex phase
             r->phase_handler = ph->next;
             return NGX_AGAIN;
         }
 
         if (rc == NGX_HTTP_FORBIDDEN || rc == NGX_HTTP_UNAUTHORIZED) {
+
+            // * NGX_HTTP_FORBIDDEN:
+            //      * aka. ngx_http_access_module
+            //          * first match result was the result of this module,
+            //          * even safisfy any;
             if (r->access_code != NGX_HTTP_UNAUTHORIZED) {
                 r->access_code = rc;
             }
@@ -1377,6 +1395,8 @@ ngx_http_core_try_files_phase(ngx_http_request_t *r,
 }
 
 
+// Annotate:
+//  *
 ngx_int_t
 ngx_http_core_content_phase(ngx_http_request_t *r,
     ngx_http_phase_handler_t *ph)
@@ -1386,6 +1406,8 @@ ngx_http_core_content_phase(ngx_http_request_t *r,
     ngx_str_t  path;
 
     if (r->content_handler) {
+        // * don't response write event any more
+        // * event module handle rest all write event in this phase
         r->write_event_handler = ngx_http_request_empty_handler;
         ngx_http_finalize_request(r, r->content_handler(r));
         return NGX_OK;
@@ -1412,6 +1434,8 @@ ngx_http_core_content_phase(ngx_http_request_t *r,
 
     /* no content handler was found */
 
+    // * no content handler was found && uri endswith('/')
+    // * return 403
     if (r->uri.data[r->uri.len - 1] == '/') {
 
         if (ngx_http_map_uri_to_path(r, &path, &root, 0) != NULL) {
@@ -1425,6 +1449,7 @@ ngx_http_core_content_phase(ngx_http_request_t *r,
 
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "no handler found");
 
+    // * return 404
     ngx_http_finalize_request(r, NGX_HTTP_NOT_FOUND);
     return NGX_OK;
 }
@@ -1719,6 +1744,9 @@ ngx_http_test_content_type(ngx_http_request_t *r, ngx_hash_t *types_hash)
 }
 
 
+// Annotate:
+//  * set Content-Type via uri exten
+//      * get uri exten via ngx_http_set_exten()
 ngx_int_t
 ngx_http_set_content_type(ngx_http_request_t *r)
 {
@@ -1733,6 +1761,8 @@ ngx_http_set_content_type(ngx_http_request_t *r)
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
+    // * O(1)
+    // * find Content-Type in types_hash
     if (r->exten.len) {
 
         hash = 0;
@@ -1768,6 +1798,7 @@ ngx_http_set_content_type(ngx_http_request_t *r)
         }
     }
 
+    // * set default_type
     r->headers_out.content_type_len = clcf->default_type.len;
     r->headers_out.content_type = clcf->default_type;
 
@@ -1775,6 +1806,8 @@ ngx_http_set_content_type(ngx_http_request_t *r)
 }
 
 
+// Annotate:
+//  * get file exten in request uri
 void
 ngx_http_set_exten(ngx_http_request_t *r)
 {
@@ -1783,6 +1816,8 @@ ngx_http_set_exten(ngx_http_request_t *r)
     ngx_str_null(&r->exten);
 
     for (i = r->uri.len - 1; i > 1; i--) {
+        // * aka. http://localhost/index.html
+        // * set r->exten.data = "html"
         if (r->uri.data[i] == '.' && r->uri.data[i - 1] != '/') {
 
             r->exten.len = r->uri.len - i - 1;
@@ -1791,6 +1826,7 @@ ngx_http_set_exten(ngx_http_request_t *r)
             return;
 
         } else if (r->uri.data[i] == '/') {
+            // * empty exten
             return;
         }
     }
@@ -2437,6 +2473,8 @@ ngx_http_gzip_quantity(u_char *p, u_char *last)
 #endif
 
 
+// Annotate:
+//  *
 ngx_int_t
 ngx_http_subrequest(ngx_http_request_t *r,
     ngx_str_t *uri, ngx_str_t *args, ngx_http_request_t **psr,
@@ -2457,6 +2495,7 @@ ngx_http_subrequest(ngx_http_request_t *r,
     /*
      * 1000 is reserved for other purposes.
      */
+     // * r->main->count == 0, request need to destroy
     if (r->main->count >= 65535 - 1000) {
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
                       "request reference counter overflow "
@@ -2495,6 +2534,8 @@ ngx_http_subrequest(ngx_http_request_t *r,
 
     sr->headers_in = r->headers_in;
 
+    // * sr->method set to NGX_HTTP_GET
+    // * so, we need to clear these http header
     ngx_http_clear_content_length(sr);
     ngx_http_clear_accept_ranges(sr);
     ngx_http_clear_last_modified(sr);
@@ -2505,6 +2546,7 @@ ngx_http_subrequest(ngx_http_request_t *r,
     sr->stream = r->stream;
 #endif
 
+    // * set method NGX_HTTP_GET
     sr->method = NGX_HTTP_GET;
     sr->http_version = r->http_version;
 
@@ -2525,11 +2567,13 @@ ngx_http_subrequest(ngx_http_request_t *r,
     sr->method_name = ngx_http_core_get_method;
     sr->http_protocol = r->http_protocol;
 
+    // * ?
     ngx_http_set_exten(sr);
 
     sr->main = r->main;
     sr->parent = r;
     sr->post_subrequest = ps;
+    // * block read event, handle write event
     sr->read_event_handler = ngx_http_request_empty_handler;
     sr->write_event_handler = ngx_http_handler;
 
@@ -2571,6 +2615,7 @@ ngx_http_subrequest(ngx_http_request_t *r,
     sr->start_sec = tp->sec;
     sr->start_msec = tp->msec;
 
+    // * subrequest count
     r->main->count++;
 
     *psr = sr;
@@ -2591,6 +2636,8 @@ ngx_http_subrequest(ngx_http_request_t *r,
 }
 
 
+// Annotate:
+//  *
 ngx_int_t
 ngx_http_internal_redirect(ngx_http_request_t *r,
     ngx_str_t *uri, ngx_str_t *args)
@@ -2599,12 +2646,14 @@ ngx_http_internal_redirect(ngx_http_request_t *r,
 
     r->uri_changes--;
 
+    // * uri redirect limit
     if (r->uri_changes == 0) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "rewrite or internal redirection cycle "
                       "while internally redirecting to \"%V\"", uri);
 
         r->main->count++;
+        // * too many redirect, return 500
         ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         return NGX_DONE;
     }

@@ -179,6 +179,21 @@ ngx_http_access_handler(ngx_http_request_t *r)
 }
 
 
+// Annotate:
+//  * O(n)
+//      * n: acl rule in conf, allow/deny
+//      * stop while first match
+//  * Point:
+//      * design for small range of ip address access control
+//      * if a lot of ip address need to match, use ngx_http_geo_module
+//          * use radix tree, O(32) or O(128)
+//  * Advantage:
+//      * easy to understand
+//  * Optimization
+//      1. use radix tree, if acl type could be group as two type in sequence
+//          * aka. allow... deny; or deny...allow, not allow...deny...allow..
+//      2. work as apache access module
+//          * compare all rule, set allow/deny priority
 static ngx_int_t
 ngx_http_access_inet(ngx_http_request_t *r, ngx_http_access_loc_conf_t *alcf,
     in_addr_t addr)
@@ -187,12 +202,14 @@ ngx_http_access_inet(ngx_http_request_t *r, ngx_http_access_loc_conf_t *alcf,
     ngx_http_access_rule_t  *rule;
 
     rule = alcf->rules->elts;
+    // * for-loop, simply match acl with given sequence in conf
     for (i = 0; i < alcf->rules->nelts; i++) {
 
         ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "access: %08XD %08XD %08XD",
                        addr, rule[i].mask, rule[i].addr);
 
+        // * match rule
         if ((addr & rule[i].mask) == rule[i].addr) {
             return ngx_http_access_found(r, rule[i].deny);
         }

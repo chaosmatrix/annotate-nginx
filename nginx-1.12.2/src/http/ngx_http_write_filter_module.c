@@ -44,6 +44,8 @@ ngx_module_t  ngx_http_write_filter_module = {
 };
 
 
+// Annotate:
+//  *
 ngx_int_t
 ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
@@ -218,6 +220,7 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         return NGX_ERROR;
     }
 
+    // * rate limit in sending response
     if (r->limit_rate) {
         if (r->limit_rate_after == 0) {
             r->limit_rate_after = clcf->limit_rate_after;
@@ -236,6 +239,11 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
             return NGX_AGAIN;
         }
 
+        // * sendfile_max_chunk
+        //      * sendfile() threshold
+        // * When set to a non-zero value,
+        // * limits the amount of data that can be transferred in a single sendfile() call.
+        // * Without the limit, one fast connection may seize the worker process entirely.
         if (clcf->sendfile_max_chunk
             && (off_t) clcf->sendfile_max_chunk < limit)
         {

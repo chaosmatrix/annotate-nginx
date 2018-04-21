@@ -92,6 +92,8 @@ ngx_module_t  ngx_http_auth_basic_module = {
 };
 
 
+// Annotate:
+//  * Read auth_basic conf while handle every request?
 static ngx_int_t
 ngx_http_auth_basic_handler(ngx_http_request_t *r)
 {

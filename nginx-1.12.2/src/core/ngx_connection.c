@@ -1204,6 +1204,7 @@ ngx_close_connection(ngx_connection_t *c)
         return;
     }
 
+    // * set timer, del timer
     if (c->read->timer_set) {
         ngx_del_timer(c->read);
     }
@@ -1253,6 +1254,8 @@ ngx_close_connection(ngx_connection_t *c)
         return;
     }
 
+    // * system call, close()
+    // * close socket fd
     if (ngx_close_socket(fd) == -1) {
 
         err = ngx_socket_errno;

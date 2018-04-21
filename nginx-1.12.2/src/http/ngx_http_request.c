@@ -2127,7 +2127,9 @@ ngx_http_set_virtual_server(ngx_http_request_t *r, ngx_str_t *host)
 
 
 // Annotate:
-//  *
+//  * ngx_hash_find_combined
+//  * regx match
+//      * return while first match
 static ngx_int_t
 ngx_http_find_virtual_server(ngx_connection_t *c,
     ngx_http_virtual_names_t *virtual_names, ngx_str_t *host,
@@ -2301,6 +2303,11 @@ ngx_http_post_request(ngx_http_request_t *r, ngx_http_posted_request_t *pr)
 }
 
 
+// Annotate:
+//  * delete read/write timer
+//  * ngx_http_terminate_request if error
+//  * ngx_http_finalize_connection if done
+//  * ngx_http_close_request if read EOF
 void
 ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
 {
@@ -2323,6 +2330,7 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         c->error = 1;
     }
 
+    // * go into next phase
     if (rc == NGX_DECLINED) {
         r->content_handler = NULL;
         r->write_event_handler = ngx_http_core_run_phases;
@@ -2330,10 +2338,12 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         return;
     }
 
+    // * is usbrequest ?  post_subrequest
     if (r != r->main && r->post_subrequest) {
         rc = r->post_subrequest->handler(r, r->post_subrequest->data, rc);
     }
 
+    // * handle error and timeout
     if (rc == NGX_ERROR
         || rc == NGX_HTTP_REQUEST_TIME_OUT
         || rc == NGX_HTTP_CLIENT_CLOSED_REQUEST
@@ -2355,12 +2365,14 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         || rc == NGX_HTTP_CREATED
         || rc == NGX_HTTP_NO_CONTENT)
     {
+        // * 444, direct terminate request
         if (rc == NGX_HTTP_CLOSE) {
             ngx_http_terminate_request(r, rc);
             return;
         }
 
         if (r == r->main) {
+            // * delete read/write timer
             if (c->read->timer_set) {
                 ngx_del_timer(c->read);
             }
@@ -2489,6 +2501,10 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
 }
 
 
+// Annotate:
+//  * terminate request
+//      * use when something wrong or want to passive abort request
+//      * without response
 static void
 ngx_http_terminate_request(ngx_http_request_t *r, ngx_int_t rc)
 {
@@ -2508,6 +2524,7 @@ ngx_http_terminate_request(ngx_http_request_t *r, ngx_int_t rc)
     cln = mr->cleanup;
     mr->cleanup = NULL;
 
+    // * free resource
     while (cln) {
         if (cln->handler) {
             cln->handler(cln->data);
@@ -2549,12 +2566,19 @@ ngx_http_terminate_handler(ngx_http_request_t *r)
 }
 
 
+// Annotate:
+//  * http1:
+//      * lingering timeout
+//      * keepalived
+//  * http2:
+//      * close stream
 static void
 ngx_http_finalize_connection(ngx_http_request_t *r)
 {
     ngx_http_core_loc_conf_t  *clcf;
 
 #if (NGX_HTTP_V2)
+    // * call ngx_http_v2_close_stream in ngx_http_close_request
     if (r->stream) {
         ngx_http_close_request(r, 0);
         return;
@@ -2565,8 +2589,10 @@ ngx_http_finalize_connection(ngx_http_request_t *r)
 
     if (r->main->count != 1) {
 
+        // * discarding body
         if (r->discard_body) {
             r->read_event_handler = ngx_http_discarded_request_body_handler;
+            // * set lingering_timeout
             ngx_add_timer(r->connection->read, clcf->lingering_timeout);
 
             if (r->lingering_time == 0) {
@@ -2589,10 +2615,12 @@ ngx_http_finalize_connection(ngx_http_request_t *r)
          && r->keepalive
          && clcf->keepalive_timeout > 0)
     {
+        // * update keepalive
         ngx_http_set_keepalive(r);
         return;
     }
 
+    // * lingering_close
     if (clcf->lingering_close == NGX_HTTP_LINGERING_ALWAYS
         || (clcf->lingering_close == NGX_HTTP_LINGERING_ON
             && (r->lingering_close
@@ -3234,6 +3262,8 @@ ngx_http_keepalive_handler(ngx_event_t *rev)
 }
 
 
+// Annotate:
+//  *
 static void
 ngx_http_set_lingering_close(ngx_http_request_t *r)
 {
@@ -3256,6 +3286,7 @@ ngx_http_set_lingering_close(ngx_http_request_t *r)
         return;
     }
 
+    // * don't write any more
     wev = c->write;
     wev->handler = ngx_http_empty_handler;
 
@@ -3266,6 +3297,8 @@ ngx_http_set_lingering_close(ngx_http_request_t *r)
         }
     }
 
+    // * shutdown socket with SHUT_WR
+    //      * don't write, still wait and read
     if (ngx_shutdown_socket(c->fd, NGX_WRITE_SHUTDOWN) == -1) {
         ngx_connection_error(c, ngx_socket_errno,
                              ngx_shutdown_socket_n " failed");
@@ -3273,12 +3306,17 @@ ngx_http_set_lingering_close(ngx_http_request_t *r)
         return;
     }
 
+    // * read rest data
     if (rev->ready) {
         ngx_http_lingering_close_handler(rev);
     }
 }
 
 
+// Annotate:
+//  * close request if timeout
+//  * read data from connection
+//  * add timer with lingering_timeout
 static void
 ngx_http_lingering_close_handler(ngx_event_t *rev)
 {
@@ -3424,6 +3462,12 @@ ngx_http_post_action(ngx_http_request_t *r)
 }
 
 
+// Annotate:
+//  * checke and call:
+//      * ngx_http_free_request
+//      * ngx_http_close_connection
+//  * http2, just close stream, not connection
+//      * ngx_http_v2_close_stream
 static void
 ngx_http_close_request(ngx_http_request_t *r, ngx_int_t rc)
 {
@@ -3435,28 +3479,41 @@ ngx_http_close_request(ngx_http_request_t *r, ngx_int_t rc)
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http request count:%d blk:%d", r->count, r->blocked);
 
+    // * zombie request ?
     if (r->count == 0) {
         ngx_log_error(NGX_LOG_ALERT, c->log, 0, "http request count is zero");
     }
 
     r->count--;
 
+    // * r->count must less than zero, than, we can free this request
+    // * r->count > 0, request in using
+    // * r->blocked, another handler need to deal with this request
+    //      * or aio dealing this request
     if (r->count || r->blocked) {
         return;
     }
 
 #if (NGX_HTTP_V2)
+    // * in http2, a stream has some same means as http1 request concept
     if (r->stream) {
         ngx_http_v2_close_stream(r->stream, rc);
         return;
     }
 #endif
 
+    // * free associate resource
     ngx_http_free_request(r, rc);
+    // * close tcp connection
     ngx_http_close_connection(c);
 }
 
 
+// Annotate:
+//  * callback all cleanup function
+//  * update status info
+//  * lingering_timeout
+//  * free pool
 void
 ngx_http_free_request(ngx_http_request_t *r, ngx_int_t rc)
 {
@@ -3479,6 +3536,7 @@ ngx_http_free_request(ngx_http_request_t *r, ngx_int_t rc)
     cln = r->cleanup;
     r->cleanup = NULL;
 
+    // * callback all cleanup function
     while (cln) {
         if (cln->handler) {
             cln->handler(cln->data);
@@ -3489,6 +3547,7 @@ ngx_http_free_request(ngx_http_request_t *r, ngx_int_t rc)
 
 #if (NGX_STAT_STUB)
 
+    // * update status info
     if (r->stat_reading) {
         (void) ngx_atomic_fetch_add(ngx_stat_reading, -1);
     }
@@ -3499,12 +3558,14 @@ ngx_http_free_request(ngx_http_request_t *r, ngx_int_t rc)
 
 #endif
 
+    // * update http header statuscode
     if (rc > 0 && (r->headers_out.status == 0 || r->connection->sent == 0)) {
         r->headers_out.status = rc;
     }
 
     log->action = "logging request";
 
+    // * log
     ngx_http_log_request(r);
 
     log->action = "closing request";
@@ -3512,6 +3573,7 @@ ngx_http_free_request(ngx_http_request_t *r, ngx_int_t rc)
     if (r->connection->timedout) {
         clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
+        // * lingering_timeout 
         if (clcf->reset_timedout_connection) {
             linger.l_onoff = 1;
             linger.l_linger = 0;
@@ -3563,6 +3625,8 @@ ngx_http_log_request(ngx_http_request_t *r)
 }
 
 
+// Annotate:
+//  *
 void
 ngx_http_close_connection(ngx_connection_t *c)
 {
