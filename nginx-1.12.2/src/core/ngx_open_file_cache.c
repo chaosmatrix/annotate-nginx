@@ -17,6 +17,27 @@
  *    files and directories errors: not found, access denied, etc.
  */
 
+// Annotate:
+//  * Question:
+//      1. open_file_cache didn't sync between worker ?
+//          * content ?
+//      2. if cached file content change, all worker didn't know at the same time
+//          * some detect content change early
+//          * some will only know this, while open_file_cache_valid timeout
+//  * Cache File's attrs
+//      * open file descriptors, their sizes and modification times;
+//      * information on existence of directories;
+//      * file lookup errors, such as file not found, no read permission, and so on.
+//  * Reason:
+//      1. Content-Length didn't update, aka, associate with cached file size
+//
+//  * Point:
+//      * when verify and delete node/element
+//          1. create open_file_cache_t,
+//              if current >= max, delete at lease one,
+//              and delete or two expired node/elements
+//          2. when cleanup cache, delete one or two expired node/elements
+//
 
 #define NGX_MIN_READ_AHEAD  (128 * 1024)
 
@@ -53,6 +74,12 @@ static ngx_cached_open_file_t *
 static void ngx_open_file_cache_remove(ngx_event_t *ev);
 
 
+// Annotate:
+//  * init rbtree
+//      * store open_file_cache
+//  * init queue
+//      * store expired open_file_cache
+//  * register cleanup handler
 ngx_open_file_cache_t *
 ngx_open_file_cache_init(ngx_pool_t *pool, ngx_uint_t max, time_t inactive)
 {
@@ -85,6 +112,12 @@ ngx_open_file_cache_init(ngx_pool_t *pool, ngx_uint_t max, time_t inactive)
 }
 
 
+// Annotate:
+//  * cleanup expired cache
+//      1. work through cache->expire_queue, delete all
+//      2. delete rbtree node
+//      3. close fd if needed
+//      4. cache->current - (the number element in cache->expire_queue)
 static void
 ngx_open_file_cache_cleanup(void *data)
 {
@@ -140,6 +173,8 @@ ngx_open_file_cache_cleanup(void *data)
 }
 
 
+// Annotate:
+//  *
 ngx_int_t
 ngx_open_cached_file(ngx_open_file_cache_t *cache, ngx_str_t *name,
     ngx_open_file_info_t *of, ngx_pool_t *pool)
@@ -359,6 +394,10 @@ ngx_open_cached_file(ngx_open_file_cache_t *cache, ngx_str_t *name,
 
 create:
 
+    // * if cache size reach max, delete least recently used file
+    //      * aka. min file.accessed
+    // * and one or two expired files
+    // * make sure cache size not exceed cache->max
     if (cache->current >= cache->max) {
         ngx_expire_old_cached_files(cache, 0, pool->log);
     }
@@ -1028,6 +1067,8 @@ ngx_open_file_cleanup(void *data)
 }
 
 
+// Annotate:
+//  *
 static void
 ngx_close_cached_file(ngx_open_file_cache_t *cache,
     ngx_cached_open_file_t *file, ngx_uint_t min_uses, ngx_log_t *log)
@@ -1036,6 +1077,8 @@ ngx_close_cached_file(ngx_open_file_cache_t *cache,
                    "close cached open file: %s, fd:%d, c:%d, u:%d, %d",
                    file->name, file->fd, file->count, file->uses, file->close);
 
+    // * file in open
+    // * remove and add to expire_queue
     if (!file->close) {
 
         file->accessed = ngx_time();
@@ -1044,6 +1087,7 @@ ngx_close_cached_file(ngx_open_file_cache_t *cache,
 
         ngx_queue_insert_head(&cache->expire_queue, &file->queue);
 
+        // *
         if (file->uses >= min_uses || file->count) {
             return;
         }
@@ -1117,6 +1161,7 @@ ngx_expire_old_cached_files(ngx_open_file_cache_t *cache, ngx_uint_t n,
 
         file = ngx_queue_data(q, ngx_cached_open_file_t, queue);
 
+        // * n != 0 and not expired
         if (n++ != 0 && now - file->accessed <= cache->inactive) {
             return;
         }
@@ -1183,6 +1228,8 @@ ngx_open_file_cache_rbtree_insert_value(ngx_rbtree_node_t *temp,
 }
 
 
+// Annotate:
+//  * Lookup in rbtree O(log(n))
 static ngx_cached_open_file_t *
 ngx_open_file_lookup(ngx_open_file_cache_t *cache, ngx_str_t *name,
     uint32_t hash)
@@ -1223,6 +1270,12 @@ ngx_open_file_lookup(ngx_open_file_cache_t *cache, ngx_str_t *name,
 }
 
 
+// Annotate:
+//  * remove element in file->queue
+//  * remove node in rbtree
+//  * cache->current--
+//  * ngx_close_cached_file
+//  * ngx_free: free resource
 static void
 ngx_open_file_cache_remove(ngx_event_t *ev)
 {
@@ -1242,12 +1295,16 @@ ngx_open_file_cache_remove(ngx_event_t *ev)
     file->event = NULL;
     file->use_event = 0;
 
+    // * tag to 1
     file->close = 1;
 
+    // * file->close == 1
+    // * delete event, free file
     ngx_close_cached_file(fev->cache, file, 0, ev->log);
 
     /* free memory only when fev->cache and fev->file are already not needed */
 
+    // * free data
     ngx_free(ev->data);
     ngx_free(ev);
 }

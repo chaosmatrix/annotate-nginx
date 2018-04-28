@@ -56,6 +56,8 @@
 #define NGX_HTTP_UPSTREAM_IGN_VARY           0x00000200
 
 
+// Annotate:
+//  *
 typedef struct {
     ngx_uint_t                       status;
     ngx_msec_t                       response_time;
@@ -89,6 +91,8 @@ typedef struct {
 } ngx_http_upstream_peer_t;
 
 
+// Annotate:
+//  * upstream { server addresss paraments; }
 typedef struct {
     ngx_str_t                        name;
     ngx_addr_t                      *addrs;
@@ -144,14 +148,21 @@ typedef struct {
 } ngx_http_upstream_local_t;
 
 
+// Annotate:
+//  *
 typedef struct {
     ngx_http_upstream_srv_conf_t    *upstream;
 
+    // * proxy_*_timeout
     ngx_msec_t                       connect_timeout;
     ngx_msec_t                       send_timeout;
     ngx_msec_t                       read_timeout;
     ngx_msec_t                       next_upstream_timeout;
 
+    // * Ignore on linux and windows
+    // * SO_SNDLOWAT
+    //      * try to minimize the number of send operations
+    //      * on outgoing connections to a proxied server
     size_t                           send_lowat;
     size_t                           buffer_size;
     size_t                           limit_rate;
@@ -289,7 +300,8 @@ typedef struct {
     unsigned                         chunked:1;
 } ngx_http_upstream_headers_in_t;
 
-
+// Annotate:
+//  * domain name resolve
 typedef struct {
     ngx_str_t                        host;
     in_port_t                        port;
@@ -310,10 +322,14 @@ typedef void (*ngx_http_upstream_handler_pt)(ngx_http_request_t *r,
     ngx_http_upstream_t *u);
 
 
+// Annotate:
+//  *
 struct ngx_http_upstream_s {
+    // * callback handler, read/write
     ngx_http_upstream_handler_pt     read_event_handler;
     ngx_http_upstream_handler_pt     write_event_handler;
 
+    // * if active connect upstream, not null
     ngx_peer_connection_t            peer;
 
     ngx_event_pipe_t                *pipe;
@@ -331,6 +347,7 @@ struct ngx_http_upstream_s {
 
     ngx_http_upstream_headers_in_t   headers_in;
 
+    // * dns resolve
     ngx_http_upstream_resolved_t    *resolved;
 
     ngx_buf_t                        from_client;
@@ -342,19 +359,27 @@ struct ngx_http_upstream_s {
     ngx_chain_t                     *busy_bufs;
     ngx_chain_t                     *free_bufs;
 
+    // * callback, before process request
     ngx_int_t                      (*input_filter_init)(void *data);
+    // * callback process request
     ngx_int_t                      (*input_filter)(void *data, ssize_t bytes);
     void                            *input_filter_ctx;
 
 #if (NGX_HTTP_CACHE)
     ngx_int_t                      (*create_key)(ngx_http_request_t *r);
 #endif
+    // * callback, create request to upstream
     ngx_int_t                      (*create_request)(ngx_http_request_t *r);
+    // * re-init/send request while error
     ngx_int_t                      (*reinit_request)(ngx_http_request_t *r);
+    // * process header from upstream
     ngx_int_t                      (*process_header)(ngx_http_request_t *r);
+    // * abort request
     void                           (*abort_request)(ngx_http_request_t *r);
+    // * finalize request
     void                           (*finalize_request)(ngx_http_request_t *r,
                                          ngx_int_t rc);
+    // * handle 3xx redirect response from upstream
     ngx_int_t                      (*rewrite_redirect)(ngx_http_request_t *r,
                                          ngx_table_elt_t *h, size_t prefix);
     ngx_int_t                      (*rewrite_cookie)(ngx_http_request_t *r,
@@ -372,8 +397,10 @@ struct ngx_http_upstream_s {
     ngx_str_t                        ssl_name;
 #endif
 
+    // * callback, cleanup resource
     ngx_http_cleanup_pt             *cleanup;
 
+    // * file cache store path, or enabled flag
     unsigned                         store:1;
     unsigned                         cacheable:1;
     unsigned                         accel:1;
@@ -382,6 +409,7 @@ struct ngx_http_upstream_s {
     unsigned                         cache_status:3;
 #endif
 
+    // * buffer upstream response, while sending to downstream
     unsigned                         buffering:1;
     unsigned                         keepalive:1;
     unsigned                         upgrade:1;

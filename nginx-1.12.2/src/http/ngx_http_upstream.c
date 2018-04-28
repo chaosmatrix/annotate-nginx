@@ -429,6 +429,8 @@ static ngx_http_variable_t  ngx_http_upstream_vars[] = {
 };
 
 
+// Annotate:
+//  *
 static ngx_http_upstream_next_t  ngx_http_upstream_next_errors[] = {
     { 500, NGX_HTTP_UPSTREAM_FT_HTTP_500 },
     { 502, NGX_HTTP_UPSTREAM_FT_HTTP_502 },
@@ -436,11 +438,14 @@ static ngx_http_upstream_next_t  ngx_http_upstream_next_errors[] = {
     { 504, NGX_HTTP_UPSTREAM_FT_HTTP_504 },
     { 403, NGX_HTTP_UPSTREAM_FT_HTTP_403 },
     { 404, NGX_HTTP_UPSTREAM_FT_HTTP_404 },
+    // * Too Many Requests, rate limit
     { 429, NGX_HTTP_UPSTREAM_FT_HTTP_429 },
     { 0, 0 }
 };
 
 
+// Annotate:
+//  * allowed cached method
 ngx_conf_bitmask_t  ngx_http_upstream_cache_method_mask[] = {
     { ngx_string("GET"), NGX_HTTP_GET },
     { ngx_string("HEAD"), NGX_HTTP_HEAD },
@@ -449,6 +454,11 @@ ngx_conf_bitmask_t  ngx_http_upstream_cache_method_mask[] = {
 };
 
 
+// Annotate:
+//  * permitted to disable header acl
+//  * proxy_ignore_headers
+//      * Disables processing of certain response header fields from the proxied server.
+//      * default empty
 ngx_conf_bitmask_t  ngx_http_upstream_ignore_headers_masks[] = {
     { ngx_string("X-Accel-Redirect"), NGX_HTTP_UPSTREAM_IGN_XA_REDIRECT },
     { ngx_string("X-Accel-Expires"), NGX_HTTP_UPSTREAM_IGN_XA_EXPIRES },
@@ -463,6 +473,8 @@ ngx_conf_bitmask_t  ngx_http_upstream_ignore_headers_masks[] = {
 };
 
 
+// Annotate:
+//  * create/init ngx_http_upstream_t
 ngx_int_t
 ngx_http_upstream_create(ngx_http_request_t *r)
 {
