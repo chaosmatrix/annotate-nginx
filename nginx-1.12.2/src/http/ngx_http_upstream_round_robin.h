@@ -16,24 +16,37 @@
 
 typedef struct ngx_http_upstream_rr_peer_s   ngx_http_upstream_rr_peer_t;
 
+// Annotate:
+//  * one-way link list
+//  * per-worker values: current_weight/conns/fails
+//      * if upstream server config max_conns=m,
+//      * that means max_conns of that server is worker * max_conns
+//  * so, it may not realy rr algorithm, when nginx under more than one worker
 struct ngx_http_upstream_rr_peer_s {
     struct sockaddr                *sockaddr;
     socklen_t                       socklen;
     ngx_str_t                       name;
     ngx_str_t                       server;
 
+    // * current weight, use while many peer match
     ngx_int_t                       current_weight;
+    // * change while peer success/faile connect
     ngx_int_t                       effective_weight;
+    // * config value
     ngx_int_t                       weight;
 
+    // * use for max_conns
     ngx_uint_t                      conns;
     ngx_uint_t                      max_conns;
 
+    // * upstream server continue fails times
     ngx_uint_t                      fails;
     time_t                          accessed;
     time_t                          checked;
 
+    // * config value, if fails >= max_fails, server temp mark down in fail_timeout
     ngx_uint_t                      max_fails;
+    // * check duration while upstream server fails
     time_t                          fail_timeout;
     ngx_msec_t                      slow_start;
     ngx_msec_t                      start_time;

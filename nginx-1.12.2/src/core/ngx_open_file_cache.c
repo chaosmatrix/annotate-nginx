@@ -27,7 +27,7 @@
 //  * Cache File's attrs
 //      * open file descriptors, their sizes and modification times;
 //      * information on existence of directories;
-//      * file lookup errors, such as file not found, no read permission, and so on.
+//      * file lookup errors, such as "file no found", "no read permission", and so on.
 //  * Reason:
 //      1. Content-Length didn't update, aka, associate with cached file size
 //

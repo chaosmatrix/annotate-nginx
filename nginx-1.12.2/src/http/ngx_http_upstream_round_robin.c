@@ -504,6 +504,8 @@ failed:
 }
 
 
+// Annotate:
+//  *
 static ngx_http_upstream_rr_peer_t *
 ngx_http_upstream_get_peer(ngx_http_upstream_rr_peer_data_t *rrp)
 {
@@ -522,6 +524,11 @@ ngx_http_upstream_get_peer(ngx_http_upstream_rr_peer_data_t *rrp)
     p = 0;
 #endif
 
+    // * for-loop
+    // * peer rule:
+    //      * fails < max_fails && checked > fail_timeout
+    //      * conns < max_conns
+    //      * if many match, return peer has largest peer->current_weight
     for (peer = rrp->peers->peer, i = 0;
          peer;
          peer = peer->next, i++)
@@ -537,6 +544,10 @@ ngx_http_upstream_get_peer(ngx_http_upstream_rr_peer_data_t *rrp)
             continue;
         }
 
+        // * skip this peer:
+        //      * max_fails > 0
+        //      * peer has fail max_fails times
+        //      * last peer->checked <= peer->fail_timeout
         if (peer->max_fails
             && peer->fails >= peer->max_fails
             && now - peer->checked <= peer->fail_timeout)
@@ -544,6 +555,7 @@ ngx_http_upstream_get_peer(ngx_http_upstream_rr_peer_data_t *rrp)
             continue;
         }
 
+        // * exceed max_conns
         if (peer->max_conns && peer->conns >= peer->max_conns) {
             continue;
         }
@@ -551,6 +563,7 @@ ngx_http_upstream_get_peer(ngx_http_upstream_rr_peer_data_t *rrp)
         peer->current_weight += peer->effective_weight;
         total += peer->effective_weight;
 
+        // * make sure effective_weight <= peer->weight
         if (peer->effective_weight < peer->weight) {
             peer->effective_weight++;
         }
@@ -582,6 +595,8 @@ ngx_http_upstream_get_peer(ngx_http_upstream_rr_peer_data_t *rrp)
 }
 
 
+// Annotate:
+//  *
 void
 ngx_http_upstream_free_round_robin_peer(ngx_peer_connection_t *pc, void *data,
     ngx_uint_t state)
@@ -612,6 +627,7 @@ ngx_http_upstream_free_round_robin_peer(ngx_peer_connection_t *pc, void *data,
         return;
     }
 
+    // * peer connection failed
     if (state & NGX_PEER_FAILED) {
         now = ngx_time();
 
@@ -632,6 +648,7 @@ ngx_http_upstream_free_round_robin_peer(ngx_peer_connection_t *pc, void *data,
                        "free rr peer failed: %p %i",
                        peer, peer->effective_weight);
 
+        // * make sure effective_weight >= 0, to check again after fail_timeout
         if (peer->effective_weight < 0) {
             peer->effective_weight = 0;
         }
