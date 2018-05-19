@@ -17,7 +17,11 @@ typedef struct {
 } ngx_http_index_t;
 
 
+// Annotate:
+//  *
 typedef struct {
+    // * store values
+    //      * index ...
     ngx_array_t             *indices;    /* array of ngx_http_index_t */
     size_t                   max_index_len;
 } ngx_http_index_loc_conf_t;
@@ -132,6 +136,9 @@ ngx_http_index_handler(ngx_http_request_t *r)
 
         if (index[i].lengths == NULL) {
 
+            // * index value startswith '/', cause internal redirect
+            //      * index /index.html
+            //      * location = / { index index.html }
             if (index[i].name.data[0] == '/') {
                 return ngx_http_internal_redirect(r, &index[i].name, &r->args);
             }

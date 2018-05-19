@@ -4569,6 +4569,8 @@ static ngx_http_method_name_t  ngx_methods_names[] = {
 };
 
 
+// Annotate:
+//  * limit_except METHOD ... {}
 static char *
 ngx_http_core_limit_except(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
@@ -4592,7 +4594,11 @@ ngx_http_core_limit_except(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
+    // * O(n) * m
+    // * n setting methods
+    // * m total valid methods, 14
     for (i = 1; i < cf->args->nelts; i++) {
+        // * verify method
         for (name = ngx_methods_names; name->name; name++) {
 
             if (ngx_strcasecmp(value[i].data, name->name) == 0) {
@@ -4609,6 +4615,7 @@ ngx_http_core_limit_except(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         continue;
     }
 
+    // * Method GET alway permitted with HEAD
     if (!(pclcf->limit_except & NGX_HTTP_GET)) {
         pclcf->limit_except &= (uint32_t) ~NGX_HTTP_HEAD;
     }

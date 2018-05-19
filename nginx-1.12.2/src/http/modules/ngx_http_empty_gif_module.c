@@ -9,6 +9,8 @@
 #include <ngx_http.h>
 
 
+// Annotate
+//  * Use in order to get client info, such as client ip address, user-agent
 static char *ngx_http_empty_gif(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 
@@ -109,11 +111,14 @@ ngx_module_t  ngx_http_empty_gif_module = {
 static ngx_str_t  ngx_http_gif_type = ngx_string("image/gif");
 
 
+// Annotate:
+//  *
 static ngx_int_t
 ngx_http_empty_gif_handler(ngx_http_request_t *r)
 {
     ngx_http_complex_value_t  cv;
 
+    // * Only GET && HEAD allow
     if (!(r->method & (NGX_HTTP_GET|NGX_HTTP_HEAD))) {
         return NGX_HTTP_NOT_ALLOWED;
     }
@@ -122,6 +127,8 @@ ngx_http_empty_gif_handler(ngx_http_request_t *r)
 
     cv.value.len = sizeof(ngx_empty_gif);
     cv.value.data = ngx_empty_gif;
+    // * 'Mon Sep 28 14:00:00 1970'
+    // * disable cache
     r->headers_out.last_modified_time = 23349600;
 
     return ngx_http_send_response(r, NGX_HTTP_OK, &ngx_http_gif_type, &cv);

@@ -126,6 +126,8 @@ static ngx_http_variable_t  ngx_http_realip_vars[] = {
 };
 
 
+// Annotate:
+//  *
 static ngx_int_t
 ngx_http_realip_handler(ngx_http_request_t *r)
 {
@@ -157,6 +159,7 @@ ngx_http_realip_handler(ngx_http_request_t *r)
 
     case NGX_HTTP_REALIP_XREALIP:
 
+        // * X-Real-IP
         if (r->headers_in.x_real_ip == NULL) {
             return NGX_DECLINED;
         }
@@ -168,6 +171,7 @@ ngx_http_realip_handler(ngx_http_request_t *r)
 
     case NGX_HTTP_REALIP_XFWD:
 
+        // * X-Forwarded-For
         xfwd = &r->headers_in.x_forwarded_for;
 
         if (xfwd->elts == NULL) {
@@ -180,6 +184,7 @@ ngx_http_realip_handler(ngx_http_request_t *r)
 
     case NGX_HTTP_REALIP_PROXY:
 
+        // *  proxy_protocol
         value = &r->connection->proxy_protocol_addr;
 
         if (value->len == 0) {
@@ -192,6 +197,7 @@ ngx_http_realip_handler(ngx_http_request_t *r)
 
     default: /* NGX_HTTP_REALIP_HEADER */
 
+        // * other http header
         part = &r->headers_in.headers.part;
         header = part->elts;
 
@@ -199,6 +205,7 @@ ngx_http_realip_handler(ngx_http_request_t *r)
         len = rlcf->header.len;
         p = rlcf->header.data;
 
+        // * traverse link list
         for (i = 0; /* void */ ; i++) {
 
             if (i >= part->nelts) {
@@ -237,10 +244,12 @@ found:
                                     rlcf->recursive)
         != NGX_DECLINED)
     {
+        // * proxy protocol, need to get ip and port separately
         if (rlcf->type == NGX_HTTP_REALIP_PROXY) {
             ngx_inet_set_port(addr.sockaddr, c->proxy_protocol_port);
         }
 
+        // * set remote_addr and remote_port
         return ngx_http_realip_set_addr(r, &addr);
     }
 
@@ -248,6 +257,8 @@ found:
 }
 
 
+// Annotate:
+//  * set remote_addr and remote_port
 static ngx_int_t
 ngx_http_realip_set_addr(ngx_http_request_t *r, ngx_addr_t *addr)
 {
@@ -312,6 +323,8 @@ ngx_http_realip_cleanup(void *data)
 }
 
 
+// Annotate:
+//  *
 static char *
 ngx_http_realip_from(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
@@ -331,6 +344,7 @@ ngx_http_realip_from(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 
+    // * cidr link list
     cidr = ngx_array_push(rlcf->from);
     if (cidr == NULL) {
         return NGX_CONF_ERROR;
@@ -338,6 +352,7 @@ ngx_http_realip_from(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 #if (NGX_HAVE_UNIX_DOMAIN)
 
+    // * trust all unix sockets
     if (ngx_strcmp(value[1].data, "unix:") == 0) {
         cidr->family = AF_UNIX;
         return NGX_CONF_OK;
@@ -445,6 +460,8 @@ ngx_http_realip_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 }
 
 
+// Annotate:
+//  * ngx_http_realip_module about variables
 static ngx_int_t
 ngx_http_realip_add_variables(ngx_conf_t *cf)
 {
@@ -464,6 +481,8 @@ ngx_http_realip_add_variables(ngx_conf_t *cf)
 }
 
 
+// Annotate:
+//  *
 static ngx_int_t
 ngx_http_realip_init(ngx_conf_t *cf)
 {
@@ -479,6 +498,7 @@ ngx_http_realip_init(ngx_conf_t *cf)
 
     *h = ngx_http_realip_handler;
 
+    // * work before ngx_http_access_module, aka allow/deny rule in config
     h = ngx_array_push(&cmcf->phases[NGX_HTTP_PREACCESS_PHASE].handlers);
     if (h == NULL) {
         return NGX_ERROR;
@@ -517,6 +537,8 @@ ngx_http_realip_get_module_ctx(ngx_http_request_t *r)
 }
 
 
+// Annotate:
+//  * set var realip_remote_addr
 static ngx_int_t
 ngx_http_realip_remote_addr_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
@@ -538,6 +560,8 @@ ngx_http_realip_remote_addr_variable(ngx_http_request_t *r,
 }
 
 
+// Annotate:
+//  * set var realip_remote_port
 static ngx_int_t
 ngx_http_realip_remote_port_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)

@@ -62,6 +62,8 @@ ngx_module_t  ngx_http_stub_status_module = {
 };
 
 
+// Annotate:
+//  * these variables update atomic, so performance shouldn't be consider
 static ngx_http_variable_t  ngx_http_stub_status_vars[] = {
 
     { ngx_string("connections_active"), NULL, ngx_http_stub_status_variable,
@@ -80,6 +82,8 @@ static ngx_http_variable_t  ngx_http_stub_status_vars[] = {
 };
 
 
+// Annotate:
+//  *
 static ngx_int_t
 ngx_http_stub_status_handler(ngx_http_request_t *r)
 {
@@ -93,6 +97,7 @@ ngx_http_stub_status_handler(ngx_http_request_t *r)
         return NGX_HTTP_NOT_ALLOWED;
     }
 
+    // * discard request body, means only GET/HEAD method should be accepted
     rc = ngx_http_discard_request_body(r);
 
     if (rc != NGX_OK) {
@@ -134,6 +139,7 @@ ngx_http_stub_status_handler(ngx_http_request_t *r)
     wr = *ngx_stat_writing;
     wa = *ngx_stat_waiting;
 
+    // * response body
     b->last = ngx_sprintf(b->last, "Active connections: %uA \n", ac);
 
     b->last = ngx_cpymem(b->last, "server accepts handled requests\n",

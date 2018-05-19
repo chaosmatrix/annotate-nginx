@@ -344,11 +344,15 @@ ngx_create_full_path(u_char *dir, ngx_uint_t access)
 }
 
 
+// Annotate:
+//  *
 ngx_atomic_uint_t
 ngx_next_temp_number(ngx_uint_t collision)
 {
     ngx_atomic_uint_t  n, add;
 
+    // * if collision, add ngx_random_number
+    // * else, incr 1
     add = collision ? ngx_random_number : 1;
 
     n = ngx_atomic_fetch_add(ngx_temp_number, add);
