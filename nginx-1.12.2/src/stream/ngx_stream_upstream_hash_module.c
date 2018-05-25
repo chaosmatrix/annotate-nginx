@@ -337,6 +337,7 @@ ngx_stream_upstream_init_chash(ngx_conf_t *cf,
             c = server->data[server->len - j - 1];
 
             if (c == ':') {
+                // * server name not peer address
                 host = server->data;
                 host_len = server->len - j - 1;
                 port = server->data + server->len - j;
@@ -589,6 +590,7 @@ ngx_stream_upstream_get_chash_peer(ngx_peer_connection_t *pc, void *data)
         hp->hash++;
         hp->tries++;
 
+        // * points->number : sum(server_number * weight * 160)
         if (hp->tries >= points->number) {
             pc->name = hp->rrp.peers->name;
             ngx_stream_upstream_rr_peers_unlock(hp->rrp.peers);

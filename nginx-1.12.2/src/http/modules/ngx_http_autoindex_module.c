@@ -9,6 +9,12 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 
+// Annotate:
+//  * why "autoindex on;" not working
+//      * request uri, which endswith '/', first process by ngx_http_index_module,
+//      * if "index file...;" can't be satisfy, then handle by ngx_http_autoindex_module,
+//      * Default, "index index.html;",
+//      * in order to make "autoindex on;" work, index file must not exist
 
 #if 0
 
@@ -149,6 +155,8 @@ ngx_module_t  ngx_http_autoindex_module = {
 };
 
 
+// Annotate:
+//  *
 static ngx_int_t
 ngx_http_autoindex_handler(ngx_http_request_t *r)
 {
@@ -166,6 +174,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
     ngx_http_autoindex_entry_t     *entry;
     ngx_http_autoindex_loc_conf_t  *alcf;
 
+    // * uri not endswith '/', goto next phase
     if (r->uri.data[r->uri.len - 1] != '/') {
         return NGX_DECLINED;
     }
@@ -251,8 +260,10 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
         return ngx_http_autoindex_error(r, &dir, &path);
     }
 
+    // * status code is 200
     r->headers_out.status = NGX_HTTP_OK;
 
+    // * set Content-Type
     switch (format) {
 
     case NGX_HTTP_AUTOINDEX_JSON:
@@ -382,6 +393,10 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
     }
 
     if (entries.nelts > 1) {
+        // * qsort rule:
+        //      * directory first
+        //      * directory sorted by ascii
+        //      * file sorted by ascii
         ngx_qsort(entries.elts, (size_t) entries.nelts,
                   sizeof(ngx_http_autoindex_entry_t),
                   ngx_http_autoindex_cmp_entries);

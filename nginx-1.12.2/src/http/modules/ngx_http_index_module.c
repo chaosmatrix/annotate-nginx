@@ -467,6 +467,8 @@ ngx_http_index_init(ngx_conf_t *cf)
 
 /* TODO: warn about duplicate indices */
 
+// Annotate:
+//  *
 static char *
 ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
@@ -488,6 +490,7 @@ ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     for (i = 1; i < cf->args->nelts; i++) {
 
+        // * only last index file can startswith '/', aka absolute path
         if (value[i].data[0] == '/' && i != cf->args->nelts - 1) {
             ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
                                "only the last index in \"index\" directive "

@@ -58,6 +58,8 @@ struct ngx_http_upstream_rr_peer_s {
     int                             ssl_session_len;
 #endif
 
+    // * if set upstream_zone, all status info share between worker
+    // * else, per worker
 #if (NGX_HTTP_UPSTREAM_ZONE)
     ngx_atomic_t                    lock;
 #endif
@@ -71,24 +73,34 @@ struct ngx_http_upstream_rr_peer_s {
 
 typedef struct ngx_http_upstream_rr_peers_s  ngx_http_upstream_rr_peers_t;
 
+// Annotate:
+//  *
 struct ngx_http_upstream_rr_peers_s {
+    // * the number of servers in this peers
+    // * if domain, may large than 1, if ip address, just itself
     ngx_uint_t                      number;
 
+    // * if upstream_zone define, `ngx_http_upstream_rr_peers_t` are share between workers
+    // * else, not
 #if (NGX_HTTP_UPSTREAM_ZONE)
     ngx_slab_pool_t                *shpool;
     ngx_atomic_t                    rwlock;
     ngx_http_upstream_rr_peers_t   *zone_next;
 #endif
 
+    // * total active server weight, backup server not accounting
     ngx_uint_t                      total_weight;
 
     unsigned                        single:1;
     unsigned                        weighted:1;
 
+    // * upstream name
     ngx_str_t                      *name;
 
+    // * peer server backup
     ngx_http_upstream_rr_peers_t   *next;
 
+    // * peer server active
     ngx_http_upstream_rr_peer_t    *peer;
 };
 

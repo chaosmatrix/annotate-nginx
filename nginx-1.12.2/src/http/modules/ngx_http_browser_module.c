@@ -16,6 +16,9 @@
  * 4000, 4000.99, 4000.99.99, and 4000.99.99.99.
  */
 
+// Annotate:
+//  * A module verify User-Agent
+//  * Server response base on User-Agent
 
 #define  NGX_HTTP_MODERN_BROWSER   0
 #define  NGX_HTTP_ANCIENT_BROWSER  1
@@ -537,6 +540,10 @@ ngx_http_modern_browser_sort(const void *one, const void *two)
 }
 
 
+// Annotate:
+//  * O(n)
+//      * n is total number of allowed browser mask, max is 5
+//
 static char *
 ngx_http_modern_browser(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
@@ -574,6 +581,7 @@ ngx_http_modern_browser(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     mask = ngx_http_modern_browser_masks;
 
+    // * verify browser mask
     for (n = 0; mask[n].browser[0] != '\0'; n++) {
         if (ngx_strcasecmp(mask[n].browser, value[1].data) == 0) {
             goto found;
@@ -599,6 +607,7 @@ found:
     ver = 0;
     scale = 1000000;
 
+    // * verify version
     for (i = 0; i < value[2].len; i++) {
 
         c = value[2].data[i];

@@ -276,6 +276,8 @@ ngx_http_upstream_get_hash_peer(ngx_peer_connection_t *pc, void *data)
 }
 
 
+// Annotate:
+//  * only consider server and port
 static ngx_int_t
 ngx_http_upstream_init_chash(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *us)
 {
@@ -334,6 +336,8 @@ ngx_http_upstream_init_chash(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *us)
             c = server->data[server->len - j - 1];
 
             if (c == ':') {
+                // * host is server name which define in upstream,
+                // * not peer address
                 host = server->data;
                 host_len = server->len - j - 1;
                 port = server->data + server->len - j;
@@ -486,6 +490,11 @@ ngx_http_upstream_init_chash_peer(ngx_http_request_t *r,
 }
 
 
+// Annotate:
+//  * 1. ngx_http_upstream_find_chash_point find point
+//      * binary search
+//  * 2. ngx_http_upstream_get_chash_peer, find peer by point
+//      * for-loop, max tries = points.number
 static ngx_int_t
 ngx_http_upstream_get_chash_peer(ngx_peer_connection_t *pc, void *data)
 {
@@ -526,6 +535,14 @@ ngx_http_upstream_get_chash_peer(ngx_peer_connection_t *pc, void *data)
         best_i = 0;
         total = 0;
 
+        // * for-loop perrs
+        //      * only one peer, if define server with ip address
+        //      * else, it depend on dns resolve, equal with TypeA records
+        // * Point:
+        //      * use domain to define a group server, in order to load balance
+        //      * group server load balance algorithm: rr
+        //      * group server peer server support attrs: max_conns/max_fails/weight
+        //      * weak: can't set different attrs between peer servers in same group
         for (peer = hp->rrp.peers->peer, i = 0;
              peer;
              peer = peer->next, i++)
@@ -577,6 +594,7 @@ ngx_http_upstream_get_chash_peer(ngx_peer_connection_t *pc, void *data)
             goto found;
         }
 
+        // * no found, go to nex hash
         hp->hash++;
         hp->tries++;
 

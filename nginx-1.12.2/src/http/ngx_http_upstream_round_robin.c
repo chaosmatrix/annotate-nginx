@@ -413,6 +413,8 @@ ngx_http_upstream_create_round_robin_peer(ngx_http_request_t *r,
 }
 
 
+// Annotate:
+//  *
 ngx_int_t
 ngx_http_upstream_get_round_robin_peer(ngx_peer_connection_t *pc, void *data)
 {
@@ -472,15 +474,20 @@ ngx_http_upstream_get_round_robin_peer(ngx_peer_connection_t *pc, void *data)
 
 failed:
 
+    // * has backup servers
     if (peers->next) {
 
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "backup servers");
 
+        // * point to backup server
         rrp->peers = peers->next;
 
+        // * the number of backup servers need to wakup
+        // * sizeof(uintptr_t) = 8 ? 4
         n = (rrp->peers->number + (8 * sizeof(uintptr_t) - 1))
                 / (8 * sizeof(uintptr_t));
 
+        // * wakup backup server
         for (i = 0; i < n; i++) {
             rrp->tried[i] = 0;
         }
