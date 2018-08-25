@@ -818,6 +818,10 @@ ngx_rstrncasecmp(u_char *s1, u_char *s2, size_t n)
 }
 
 
+// Annotate:
+//  * compare first n bytes, thread-safe
+//  * less is -1, equal is 0, greater is 1
+//  * O(n)
 ngx_int_t
 ngx_memn2cmp(u_char *s1, u_char *s2, size_t n1, size_t n2)
 {

@@ -5772,6 +5772,7 @@ ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
             weight = ngx_atoi(&value[i].data[7], value[i].len - 7);
 
+            // * weight must > 0
             if (weight == NGX_ERROR || weight == 0) {
                 goto invalid;
             }
@@ -5787,6 +5788,8 @@ ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
             max_conns = ngx_atoi(&value[i].data[10], value[i].len - 10);
 
+            // * support zero
+            // * establish connections that peer can hold is max_conns + 1
             if (max_conns == NGX_ERROR) {
                 goto invalid;
             }

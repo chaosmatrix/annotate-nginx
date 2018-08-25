@@ -466,6 +466,8 @@ ngx_http_upstream_get_round_robin_peer(ngx_peer_connection_t *pc, void *data)
     pc->socklen = peer->socklen;
     pc->name = &peer->name;
 
+    // * get peer first, than update peer->conns
+    // * peer support max_conns = cfg.max_conns + 1
     peer->conns++;
 
     ngx_http_upstream_rr_peers_unlock(peers);

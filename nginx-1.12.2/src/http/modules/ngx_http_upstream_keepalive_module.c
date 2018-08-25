@@ -161,6 +161,8 @@ ngx_http_upstream_init_keepalive(ngx_conf_t *cf,
 }
 
 
+// Annotate:
+//  * per-worker keepavlie cache
 static ngx_int_t
 ngx_http_upstream_init_keepalive_peer(ngx_http_request_t *r,
     ngx_http_upstream_srv_conf_t *us)
@@ -186,10 +188,13 @@ ngx_http_upstream_init_keepalive_peer(ngx_http_request_t *r,
     kp->conf = kcf;
     kp->upstream = r->upstream;
     kp->data = r->upstream->peer.data;
+    // * must be implement by ngx_upstream_* algorithm module to support upstream_keepalived
+    // * the way to found matched peer from upstream servers
     kp->original_get_peer = r->upstream->peer.get;
     kp->original_free_peer = r->upstream->peer.free;
 
     r->upstream->peer.data = kp;
+    // * get/free keepalive connection via matched upstream peer
     r->upstream->peer.get = ngx_http_upstream_get_keepalive_peer;
     r->upstream->peer.free = ngx_http_upstream_free_keepalive_peer;
 
@@ -204,6 +209,11 @@ ngx_http_upstream_init_keepalive_peer(ngx_http_request_t *r,
 }
 
 
+// Annotate:
+//  * steps:
+//      1. found best upstream peer
+//      2. search peer->sockaddr for cached connection
+//      3. if found use, else new connection
 static ngx_int_t
 ngx_http_upstream_get_keepalive_peer(ngx_peer_connection_t *pc, void *data)
 {
@@ -229,6 +239,7 @@ ngx_http_upstream_get_keepalive_peer(ngx_peer_connection_t *pc, void *data)
 
     cache = &kp->conf->cache;
 
+    // * O(n)
     for (q = ngx_queue_head(cache);
          q != ngx_queue_sentinel(cache);
          q = ngx_queue_next(q))
@@ -240,6 +251,7 @@ ngx_http_upstream_get_keepalive_peer(ngx_peer_connection_t *pc, void *data)
                          item->socklen, pc->socklen)
             == 0)
         {
+            // * found, de-queue cache, en-queue free
             ngx_queue_remove(q);
             ngx_queue_insert_head(&kp->conf->free, q);
 
@@ -268,6 +280,11 @@ found:
 }
 
 
+// Annotate:
+//  * steps
+//      1. remove from queue
+//      2. tcp 4-way shoutdown
+//  * LRU algorithm
 static void
 ngx_http_upstream_free_keepalive_peer(ngx_peer_connection_t *pc, void *data,
     ngx_uint_t state)
@@ -317,6 +334,7 @@ ngx_http_upstream_free_keepalive_peer(ngx_peer_connection_t *pc, void *data,
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0,
                    "free keepalive peer: saving connection %p", c);
 
+    // * free, de-queue free, en-queue cache
     if (ngx_queue_empty(&kp->conf->free)) {
 
         q = ngx_queue_last(&kp->conf->cache);

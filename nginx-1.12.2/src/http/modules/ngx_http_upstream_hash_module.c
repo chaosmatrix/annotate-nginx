@@ -598,6 +598,8 @@ ngx_http_upstream_get_chash_peer(ngx_peer_connection_t *pc, void *data)
         hp->hash++;
         hp->tries++;
 
+        // * retry too many times, already fix in nginx-1.13.6
+        // * https://github.com/nginx/nginx/commit/a10ec2db91b448029968025d23155e9c383f522d
         if (hp->tries >= points->number) {
             pc->name = hp->rrp.peers->name;
             ngx_http_upstream_rr_peers_unlock(hp->rrp.peers);
