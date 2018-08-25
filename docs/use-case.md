@@ -109,3 +109,52 @@ server {
     return 200 "$remote_addr:$remote_port -->> $server_addr:$server_port\r\n";
 }
 ```
+
+### Reverse Proxy
+1. Example
+```
+localtion / {
+    proxy_pass http://remote_backend;
+    proxy_redirect off;
+    proxy_set_header Host $http_host;
+
+    # cache lock
+    proxy_cache_lock on;
+    proxy_cache_lock_age 10s;
+    proxy_cache_lock_timeout 10s;
+
+    # http Accept-Ranges
+    # 200 mb = 1024 * 1024 * 1024 * 200 bytes
+    proxy_cache_max_range_offset 214748364800;
+    proxy_force_ranges off;
+
+    proxy_cache_methods GET HEAD;
+    proxy_cache_min_uses 1;
+    # Enables revalidation of expired cache items using conditional requests with
+    # the “If-Modified-Since” and “If-None-Match” header fields.
+    proxy_cache_revalidate on;
+    proxy_cache_use_stale error timeout  http_500  http_502 http_503 http_504;
+    proxy_cache_path /data/proxy_cache levels=1:2 keys_zone=one:10m inactive=10m;
+
+    proxy_ignore_client_abort off;
+    proxy_store off;
+    proxy_temp_file_write_size 16k;
+    proxy_temp_path /data/proxy_temp 1 2;
+}
+
+OR:
+
+location /files/ {
+    root               /data/files;
+    error_page         404 = @fetch_remote;
+}
+
+location @fetch_remote {
+    internal;
+    proxy_pass         http://remote_backend;
+    proxy_store        on;
+    proxy_store_access user:rw group:rw;
+    proxy_temp_path    /data/proxy_temp;
+    root               /data/files;
+}
+```
