@@ -45,6 +45,7 @@ location @health_check_backend {
         * extra mutex added while many thread/process communicating across unix domain socket
 3. References
     * https://github.com/torvalds/linux/blob/master/Documentation/networking/ip-sysctl.txt
+    * https://github.com/torvalds/linux/commit/79e9fed460385a3d8ba0b5782e9e74405cb199b1
     * https://lists.freebsd.org/pipermail/freebsd-performance/2005-February/001143.html
     * https://tools.ietf.org/html/rfc3330
 4. Example
