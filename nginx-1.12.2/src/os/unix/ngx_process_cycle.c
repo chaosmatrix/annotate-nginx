@@ -69,6 +69,8 @@ static ngx_log_t        ngx_exit_log;
 static ngx_open_file_t  ngx_exit_log_file;
 
 
+// Annotate:
+//  *
 void
 ngx_master_process_cycle(ngx_cycle_t *cycle)
 {
@@ -84,16 +86,22 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
     ngx_listening_t   *ls;
     ngx_core_conf_t   *ccf;
 
+    // * signal handler
     sigemptyset(&set);
     sigaddset(&set, SIGCHLD);
     sigaddset(&set, SIGALRM);
     sigaddset(&set, SIGIO);
     sigaddset(&set, SIGINT);
+    // * SIGNAL HUP, nginx -s reload
     sigaddset(&set, ngx_signal_value(NGX_RECONFIGURE_SIGNAL));
+    // * SIGNAL USR1
     sigaddset(&set, ngx_signal_value(NGX_REOPEN_SIGNAL));
+    // * SIGNAL WINCH
     sigaddset(&set, ngx_signal_value(NGX_NOACCEPT_SIGNAL));
     sigaddset(&set, ngx_signal_value(NGX_TERMINATE_SIGNAL));
+    // * SIGNAL QUIT
     sigaddset(&set, ngx_signal_value(NGX_SHUTDOWN_SIGNAL));
+    // * SIGNAL USR2
     sigaddset(&set, ngx_signal_value(NGX_CHANGEBIN_SIGNAL));
 
     if (sigprocmask(SIG_BLOCK, &set, NULL) == -1) {
@@ -127,8 +135,10 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
+    // * start worker process
     ngx_start_worker_processes(cycle, ccf->worker_processes,
                                NGX_PROCESS_RESPAWN);
+    // * start cache manager process
     ngx_start_cache_manager_processes(cycle, 0);
 
     ngx_new_binary = 0;
@@ -136,6 +146,7 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
     sigio = 0;
     live = 1;
 
+    // * for-loop, receive/handle signal
     for ( ;; ) {
         if (delay) {
             if (ngx_sigalrm) {
@@ -200,11 +211,13 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
             continue;
         }
 
+        // * handle SIGNAL QUIT
         if (ngx_quit) {
             ngx_signal_worker_processes(cycle,
                                         ngx_signal_value(NGX_SHUTDOWN_SIGNAL));
 
             ls = cycle->listening.elts;
+            // * close listening socket
             for (n = 0; n < cycle->listening.nelts; n++) {
                 if (ngx_close_socket(ls[n].fd) == -1) {
                     ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_socket_errno,
@@ -217,9 +230,11 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
             continue;
         }
 
+        // * re-read configuration
         if (ngx_reconfigure) {
             ngx_reconfigure = 0;
 
+            // * new nginx binary executable file
             if (ngx_new_binary) {
                 ngx_start_worker_processes(cycle, ccf->worker_processes,
                                            NGX_PROCESS_RESPAWN);
@@ -723,6 +738,8 @@ ngx_master_process_exit(ngx_cycle_t *cycle)
 }
 
 
+// Annotate:
+//  *
 static void
 ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 {
@@ -731,12 +748,17 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
     ngx_process = NGX_PROCESS_WORKER;
     ngx_worker = worker;
 
+    // * init worker process, set process's attributes, start worker
     ngx_worker_process_init(cycle, worker);
 
+    // * set worker process name, cmdline, show on terminal
     ngx_setproctitle("worker process");
 
+    // * for-loop, handle signal/event/timer
     for ( ;; ) {
 
+        // * worker in exiting status, aka. receive SIGHUP/SIGUSR1/QUIT/WINCH
+        // * if worker always has event or timer, than, it can't gracefully shutdown, untile timeout ?
         if (ngx_exiting) {
             if (ngx_event_no_timers_left() == NGX_OK) {
                 ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "exiting");
@@ -746,13 +768,16 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "worker cycle");
 
+        // * process events and timers, aka. incoming connection
         ngx_process_events_and_timers(cycle);
 
+        // * TERM/INT
         if (ngx_terminate) {
             ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "exiting");
             ngx_worker_process_exit(cycle);
         }
 
+        // * QUIT
         if (ngx_quit) {
             ngx_quit = 0;
             ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0,
@@ -767,6 +792,7 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
             }
         }
 
+        // * reopen log file
         if (ngx_reopen) {
             ngx_reopen = 0;
             ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "reopening logs");

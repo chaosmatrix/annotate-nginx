@@ -545,6 +545,8 @@ ngx_http_upstream_init(ngx_http_request_t *r)
 }
 
 
+// Annotate:
+//  *
 static void
 ngx_http_upstream_init_request(ngx_http_request_t *r)
 {
@@ -623,6 +625,7 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
         return;
     }
 
+    // * set peer->local, handle proxy_bind if has
     if (ngx_http_upstream_set_local(r, u, u->conf->local) != NGX_OK) {
         ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         return;
@@ -6101,6 +6104,9 @@ ngx_http_upstream_bind_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
 }
 
 
+// Annotate:
+//  * parse proxy_bind configuration option
+//  * update nginx local bind ip address, u->peer.local
 static ngx_int_t
 ngx_http_upstream_set_local(ngx_http_request_t *r, ngx_http_upstream_t *u,
     ngx_http_upstream_local_t *local)
@@ -6136,6 +6142,7 @@ ngx_http_upstream_set_local(ngx_http_request_t *r, ngx_http_upstream_t *u,
         return NGX_ERROR;
     }
 
+    // * parse and set port
     rc = ngx_parse_addr_port(r->pool, addr, val.data, val.len);
     if (rc == NGX_ERROR) {
         return NGX_ERROR;

@@ -96,6 +96,11 @@ ngx_http_upstream_init_least_conn_peer(ngx_http_request_t *r,
 }
 
 
+// Annotate:
+//  * steps:
+//      1. find least conns * weight
+//      2. if more than one peers has equal conns * weight, work like rr algorithm
+//  * 2 * O(n), n is the number of peers
 static ngx_int_t
 ngx_http_upstream_get_least_conn_peer(ngx_peer_connection_t *pc, void *data)
 {
@@ -183,6 +188,7 @@ ngx_http_upstream_get_least_conn_peer(ngx_peer_connection_t *pc, void *data)
         goto failed;
     }
 
+    // * work as rr algorithm
     if (many) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0,
                        "get least conn peer, many");
@@ -256,6 +262,7 @@ ngx_http_upstream_get_least_conn_peer(ngx_peer_connection_t *pc, void *data)
 
 failed:
 
+    // * if has backup server, wake up
     if (peers->next) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0,
                        "get least conn peer, backup servers");

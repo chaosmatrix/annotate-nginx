@@ -2492,6 +2492,8 @@ ngx_http_subrequest(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
+    // * Question:
+    //      * subrequest limit flying 55535 ?
     /*
      * 1000 is reserved for other purposes.
      */

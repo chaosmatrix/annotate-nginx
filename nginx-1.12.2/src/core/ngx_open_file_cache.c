@@ -76,9 +76,10 @@ static void ngx_open_file_cache_remove(ngx_event_t *ev);
 
 // Annotate:
 //  * init rbtree
-//      * store open_file_cache
+//      * store open_file_cache, file struct
 //  * init queue
 //      * store expired open_file_cache
+//  * rbtree and queue together, avoid work throngh all cache entry
 //  * register cleanup handler
 ngx_open_file_cache_t *
 ngx_open_file_cache_init(ngx_pool_t *pool, ngx_uint_t max, time_t inactive)
@@ -239,8 +240,10 @@ ngx_open_cached_file(ngx_open_file_cache_t *cache, ngx_str_t *name,
 
     now = ngx_time();
 
+    // * get hash code fro file name
     hash = ngx_crc32_long(name->data, name->len);
 
+    // * get file struct by lookup rbtree
     file = ngx_open_file_lookup(cache, name, hash);
 
     if (file) {

@@ -975,6 +975,8 @@ ngx_create_pidfile(ngx_str_t *name, ngx_log_t *log)
 }
 
 
+// Annotate:
+//  *
 void
 ngx_delete_pidfile(ngx_cycle_t *cycle)
 {
@@ -985,6 +987,7 @@ ngx_delete_pidfile(ngx_cycle_t *cycle)
 
     name = ngx_new_binary ? ccf->oldpid.data : ccf->pid.data;
 
+    // * shall we verify file (must be file) before delete
     if (ngx_delete_file(name) == NGX_FILE_ERROR) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                       ngx_delete_file_n " \"%s\" failed", name);
@@ -1077,6 +1080,8 @@ ngx_test_lockfile(u_char *file, ngx_log_t *log)
 }
 
 
+// Annotate:
+//  * reopen log files
 void
 ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user)
 {
@@ -1333,6 +1338,8 @@ ngx_clean_old_cycles(ngx_event_t *ev)
 }
 
 
+// Annotate:
+//  *
 void
 ngx_set_shutdown_timer(ngx_cycle_t *cycle)
 {
@@ -1340,6 +1347,7 @@ ngx_set_shutdown_timer(ngx_cycle_t *cycle)
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
+    // * worker_shutdown_timeout: a timeout for a graceful shutdown of worker processes
     if (ccf->shutdown_timeout) {
         ngx_shutdown_event.handler = ngx_shutdown_timer_handler;
         ngx_shutdown_event.data = cycle;
@@ -1351,6 +1359,8 @@ ngx_set_shutdown_timer(ngx_cycle_t *cycle)
 }
 
 
+// Annotate:
+//  *
 static void
 ngx_shutdown_timer_handler(ngx_event_t *ev)
 {
@@ -1362,6 +1372,7 @@ ngx_shutdown_timer_handler(ngx_event_t *ev)
 
     c = cycle->connections;
 
+    // * handle current worker's connections, close all timeout connections
     for (i = 0; i < cycle->connection_n; i++) {
 
         if (c[i].fd == (ngx_socket_t) -1

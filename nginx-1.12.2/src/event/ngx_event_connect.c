@@ -94,6 +94,8 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
         goto failed;
     }
 
+    // TODO: (Annotate)
+    //      * if peer is local, random bind 127.0.0.1/8 to support more connections, include ESTABLISH|TIME_WAIT|FIN_WAIT
     if (pc->local) {
 
     // * enable IP_TRANSPARENT
@@ -155,6 +157,8 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
 
 #endif
 
+        // * nginx bind sockaddr, then connect upstream peer
+        // * TODO: if loopback traffic can bind 127.0.0.1/8 and all other configuration ip address ?
         if (bind(s, pc->local->sockaddr, pc->local->socklen) == -1) {
             ngx_log_error(NGX_LOG_CRIT, pc->log, ngx_socket_errno,
                           "bind(%V) failed", &pc->local->name);
