@@ -192,9 +192,12 @@ struct ngx_resolver_s {
 };
 
 
+// Annotate:
+//  *
 struct ngx_resolver_ctx_s {
     ngx_resolver_ctx_t       *next;
     ngx_resolver_t           *resolver;
+    // * Cache Resolve
     ngx_resolver_node_t      *node;
 
     /* event ident must be after 3 pointers as in ngx_connection_t */
@@ -204,12 +207,14 @@ struct ngx_resolver_ctx_s {
     ngx_str_t                 name;
     ngx_str_t                 service;
 
+    // * TypeA Record
     time_t                    valid;
     ngx_uint_t                naddrs;
     ngx_resolver_addr_t      *addrs;
     ngx_resolver_addr_t       addr;
     struct sockaddr_in        sin;
 
+    // * TypeSRV Record
     ngx_uint_t                count;
     ngx_uint_t                nsrvs;
     ngx_resolver_srv_name_t  *srvs;

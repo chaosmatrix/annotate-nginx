@@ -5151,6 +5151,8 @@ ngx_http_core_internal(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
+// Annotate:
+//  * config options "resolver"
 static char *
 ngx_http_core_resolver(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {

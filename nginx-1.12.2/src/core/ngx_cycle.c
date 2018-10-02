@@ -1372,7 +1372,8 @@ ngx_shutdown_timer_handler(ngx_event_t *ev)
 
     c = cycle->connections;
 
-    // * handle current worker's connections, close all timeout connections
+    // * handle current worker's connections, try to close all timeout connections
+    // * some connections might be remain
     for (i = 0; i < cycle->connection_n; i++) {
 
         if (c[i].fd == (ngx_socket_t) -1

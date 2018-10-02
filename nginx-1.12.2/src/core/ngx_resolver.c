@@ -144,6 +144,7 @@ ngx_resolver_create(ngx_conf_t *cf, ngx_str_t *names, ngx_uint_t n)
         return NULL;
     }
 
+    // * clean && free resource
     cln->handler = ngx_resolver_cleanup;
 
     r = ngx_calloc(sizeof(ngx_resolver_t), cf->log);
@@ -158,6 +159,7 @@ ngx_resolver_create(ngx_conf_t *cf, ngx_str_t *names, ngx_uint_t n)
         return NULL;
     }
 
+    // * init cache
     ngx_rbtree_init(&r->name_rbtree, &r->name_sentinel,
                     ngx_resolver_rbtree_insert_value);
 
@@ -167,15 +169,21 @@ ngx_resolver_create(ngx_conf_t *cf, ngx_str_t *names, ngx_uint_t n)
     ngx_rbtree_init(&r->addr_rbtree, &r->addr_sentinel,
                     ngx_rbtree_insert_value);
 
+    // * send queue
+    // * TypeA
     ngx_queue_init(&r->name_resend_queue);
+    // * TypeSRV
     ngx_queue_init(&r->srv_resend_queue);
+    // * TypePTR
     ngx_queue_init(&r->addr_resend_queue);
 
+    // * expire queue
     ngx_queue_init(&r->name_expire_queue);
     ngx_queue_init(&r->srv_expire_queue);
     ngx_queue_init(&r->addr_expire_queue);
 
 #if (NGX_HAVE_INET6)
+    // * what if system enable ipv6, but disable in nginx config? should still init ?
     r->ipv6 = 1;
 
     ngx_rbtree_init(&r->addr6_rbtree, &r->addr6_sentinel,
@@ -225,6 +233,7 @@ ngx_resolver_create(ngx_conf_t *cf, ngx_str_t *names, ngx_uint_t n)
         }
 
 #if (NGX_HAVE_INET6)
+        // * should this put before TypeAAAA ngx_rbtree_init ??
         if (ngx_strncmp(names[i].data, "ipv6=", 5) == 0) {
 
             if (ngx_strcmp(&names[i].data[5], "on") == 0) {
@@ -277,6 +286,8 @@ ngx_resolver_create(ngx_conf_t *cf, ngx_str_t *names, ngx_uint_t n)
 }
 
 
+// Annotate:
+//  * clean && free
 static void
 ngx_resolver_cleanup(void *data)
 {
@@ -368,6 +379,10 @@ ngx_resolver_cleanup_tree(ngx_resolver_t *r, ngx_rbtree_t *tree)
 }
 
 
+// Annotate:
+//  * domain name resolve start
+//  * vars:
+//      * temp is domain need to resolve
 ngx_resolver_ctx_t *
 ngx_resolve_start(ngx_resolver_t *r, ngx_resolver_ctx_t *temp)
 {
@@ -377,6 +392,7 @@ ngx_resolve_start(ngx_resolver_t *r, ngx_resolver_ctx_t *temp)
     if (temp) {
         addr = ngx_inet_addr(temp->name.data, temp->name.len);
 
+        // * temp is ip address
         if (addr != INADDR_NONE) {
             temp->resolver = r;
             temp->state = NGX_OK;
@@ -393,10 +409,12 @@ ngx_resolve_start(ngx_resolver_t *r, ngx_resolver_ctx_t *temp)
         }
     }
 
+    // * retry times ?
     if (r->connections.nelts == 0) {
         return NGX_NO_RESOLVER;
     }
 
+    // * alloc/init ngx_resolver_ctx_s
     ctx = ngx_resolver_calloc(r, sizeof(ngx_resolver_ctx_t));
 
     if (ctx) {
@@ -1271,6 +1289,8 @@ ngx_resolver_expire(ngx_resolver_t *r, ngx_rbtree_t *tree, ngx_queue_t *queue)
 }
 
 
+// Annotate:
+//  * send dns query
 static ngx_int_t
 ngx_resolver_send_query(ngx_resolver_t *r, ngx_resolver_node_t *rn)
 {
@@ -1314,6 +1334,8 @@ ngx_resolver_send_query(ngx_resolver_t *r, ngx_resolver_node_t *rn)
 }
 
 
+// Annotate:
+//  * send dns query by udp
 static ngx_int_t
 ngx_resolver_send_udp_query(ngx_resolver_t *r, ngx_resolver_connection_t  *rec,
     u_char *query, u_short qlen)
@@ -1345,6 +1367,8 @@ ngx_resolver_send_udp_query(ngx_resolver_t *r, ngx_resolver_connection_t  *rec,
 }
 
 
+// Annotate:
+//  * send dns query by tcp
 static ngx_int_t
 ngx_resolver_send_tcp_query(ngx_resolver_t *r, ngx_resolver_connection_t *rec,
     u_char *query, u_short qlen)
@@ -1431,6 +1455,8 @@ ngx_resolver_send_tcp_query(ngx_resolver_t *r, ngx_resolver_connection_t *rec,
 }
 
 
+// Annotate:
+//  * handle resend
 static void
 ngx_resolver_resend_handler(ngx_event_t *ev)
 {
@@ -1502,6 +1528,8 @@ ngx_resolver_resend_handler(ngx_event_t *ev)
 }
 
 
+// Annotate:
+//  * handle resend queue
 static time_t
 ngx_resolver_resend(ngx_resolver_t *r, ngx_rbtree_t *tree, ngx_queue_t *queue)
 {
@@ -1512,6 +1540,7 @@ ngx_resolver_resend(ngx_resolver_t *r, ngx_rbtree_t *tree, ngx_queue_t *queue)
     now = ngx_time();
 
     for ( ;; ) {
+        // * no name need to send
         if (ngx_queue_empty(queue)) {
             return 0;
         }
@@ -1520,6 +1549,7 @@ ngx_resolver_resend(ngx_resolver_t *r, ngx_rbtree_t *tree, ngx_queue_t *queue)
 
         rn = ngx_queue_data(q, ngx_resolver_node_t, queue);
 
+        // * resolver didn't expire, return expire time duration
         if (now < rn->expire) {
             return rn->expire - now;
         }
@@ -1528,6 +1558,7 @@ ngx_resolver_resend(ngx_resolver_t *r, ngx_rbtree_t *tree, ngx_queue_t *queue)
                        "resolver resend \"%*s\" %p",
                        (size_t) rn->nlen, rn->name, rn->waiting);
 
+        // * remove expired
         ngx_queue_remove(q);
 
         if (rn->waiting) {
@@ -1536,10 +1567,12 @@ ngx_resolver_resend(ngx_resolver_t *r, ngx_rbtree_t *tree, ngx_queue_t *queue)
                 rn->last_connection = 0;
             }
 
+            // * send query
             (void) ngx_resolver_send_query(r, rn);
 
             rn->expire = now + r->resend_timeout;
 
+            // * add to expire queue
             ngx_queue_insert_head(queue, q);
 
             continue;
@@ -1564,6 +1597,8 @@ ngx_resolver_resend_empty(ngx_resolver_t *r)
 }
 
 
+// Annoate:
+//  * read udp dns response
 static void
 ngx_resolver_udp_read(ngx_event_t *rev)
 {
@@ -1714,6 +1749,8 @@ failed:
 }
 
 
+// Annotate:
+//  *
 static void
 ngx_resolver_process_response(ngx_resolver_t *r, u_char *buf, size_t n,
     ngx_uint_t tcp)
@@ -1729,16 +1766,22 @@ ngx_resolver_process_response(ngx_resolver_t *r, u_char *buf, size_t n,
     ngx_resolver_hdr_t   *response;
     ngx_resolver_node_t  *rn;
 
+    // * verify response size
     if (n < sizeof(ngx_resolver_hdr_t)) {
         goto short_response;
     }
 
     response = (ngx_resolver_hdr_t *) buf;
 
+    // * id
     ident = (response->ident_hi << 8) + response->ident_lo;
+    // * flags
     flags = (response->flags_hi << 8) + response->flags_lo;
+    // * the number of Question Section
     nqs = (response->nqs_hi << 8) + response->nqs_lo;
+    // * the number of Answer Section
     nan = (response->nan_hi << 8) + response->nan_lo;
+    // * trunc flag
     trunc = flags & 0x0200;
 
     ngx_log_debug6(NGX_LOG_DEBUG_CORE, r->log, 0,
@@ -1749,6 +1792,12 @@ ngx_resolver_process_response(ngx_resolver_t *r, u_char *buf, size_t n,
 
     /* response to a standard query */
     if ((flags & 0xf870) != 0x8000 || (trunc && tcp)) {
+        // * nginx send query without AD bit set
+        // * NOAUTH, dns response must not set AD bit
+        // * RD & RA bit set, 0x8180 & 0xf870 = 0x8000
+        // * RD & RA & AD bit set, 0x81a0 & 0xf870 != 0x8000
+        //      * support AD bit set: flags & 0xf870 == 0x8020
+        //  * RFC3655
         ngx_log_error(r->log_level, r->log, 0,
                       "invalid %s DNS response %ui fl:%04Xi",
                       tcp ? "TCP" : "UDP", ident, flags);
@@ -1757,10 +1806,12 @@ ngx_resolver_process_response(ngx_resolver_t *r, u_char *buf, size_t n,
 
     code = flags & 0xf;
 
+    // * NGX_RESOLVE_FORMERR
     if (code == NGX_RESOLVE_FORMERR) {
 
         times = 0;
 
+        // * find the send_name in queue
         for (q = ngx_queue_head(&r->name_resend_queue);
              q != ngx_queue_sentinel(&r->name_resend_queue) && times++ < 100;
              q = ngx_queue_next(q))
@@ -1768,6 +1819,7 @@ ngx_resolver_process_response(ngx_resolver_t *r, u_char *buf, size_t n,
             rn = ngx_queue_data(q, ngx_resolver_node_t, queue);
             qident = (rn->query[0] << 8) + rn->query[1];
 
+            // * match by id
             if (qident == ident) {
                 goto dns_error_name;
             }
@@ -1783,6 +1835,7 @@ ngx_resolver_process_response(ngx_resolver_t *r, u_char *buf, size_t n,
 #endif
         }
 
+        // * unexpect error ??
         goto dns_error;
     }
 
@@ -1790,6 +1843,7 @@ ngx_resolver_process_response(ngx_resolver_t *r, u_char *buf, size_t n,
         goto dns_error;
     }
 
+    // * Question Section must one
     if (nqs != 1) {
         err = "invalid number of questions in DNS response";
         goto done;
@@ -1869,6 +1923,7 @@ found:
 
 short_response:
 
+    // * ??
     err = "short DNS response";
 
 done:
@@ -1879,6 +1934,7 @@ done:
 
 dns_error_name:
 
+    // * dns response not respect dns response format, detail in rfc
     ngx_log_error(r->log_level, r->log, 0,
                   "DNS error (%ui: %s), query id:%ui, name:\"%*s\"",
                   code, ngx_resolver_strerror(code), ident,
@@ -1894,6 +1950,8 @@ dns_error:
 }
 
 
+// Annotate:
+//  *
 static void
 ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t n,
     ngx_uint_t ident, ngx_uint_t code, ngx_uint_t qtype,
@@ -2495,6 +2553,7 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t n,
 
         if (ctx) {
 
+            // * max recursion is 50 ? should it too large ?
             if (ctx->recursion++ >= NGX_RESOLVER_MAX_RECURSION) {
 
                 /* unlock name mutex */
@@ -4008,6 +4067,7 @@ done:
     n = *src++;
 
     for ( ;; ) {
+        // * n < '@'
         if (n & 0xc0) {
             n = ((n & 0x3f) << 8) + *src;
             src = &buf[n];

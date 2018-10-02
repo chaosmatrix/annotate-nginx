@@ -1034,6 +1034,7 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
         return;
     }
 
+    // * not held accept_mutext any more
     ngx_accept_mutex_held = 0;
     ngx_use_accept_mutex = 0;
 
@@ -1044,6 +1045,8 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
 
         if (c) {
             if (c->read->active) {
+                // * never read epoll event
+                // * never accept new incoming connection
                 if (ngx_event_flags & NGX_USE_EPOLL_EVENT) {
 
                     /*
@@ -1061,6 +1064,7 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
 
             ngx_free_connection(c);
 
+            // *
             c->fd = (ngx_socket_t) -1;
         }
 
@@ -1347,6 +1351,8 @@ ngx_drain_connections(ngx_cycle_t *cycle)
 }
 
 
+// Annotate:
+//  *
 void
 ngx_close_idle_connections(ngx_cycle_t *cycle)
 {
@@ -1360,6 +1366,7 @@ ngx_close_idle_connections(ngx_cycle_t *cycle)
         /* THREAD: lock */
 
         if (c[i].fd != (ngx_socket_t) -1 && c[i].idle) {
+            // * tag connection should be closed
             c[i].close = 1;
             c[i].read->handler(c[i].read);
         }

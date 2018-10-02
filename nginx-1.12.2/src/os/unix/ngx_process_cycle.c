@@ -230,7 +230,11 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
             continue;
         }
 
-        // * re-read configuration
+        // * handle signal HUP, kill -HUP
+        // * nginx -s reload, re-read configuration
+        // * steps:
+        //      1. start new worker/cached process
+        //      2. notify old worker with signal QUIT
         if (ngx_reconfigure) {
             ngx_reconfigure = 0;
 
@@ -239,6 +243,7 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
                 ngx_start_worker_processes(cycle, ccf->worker_processes,
                                            NGX_PROCESS_RESPAWN);
                 ngx_start_cache_manager_processes(cycle, 0);
+                // *
                 ngx_noaccepting = 0;
 
                 continue;
@@ -466,6 +471,8 @@ ngx_pass_open_channel(ngx_cycle_t *cycle, ngx_channel_t *ch)
 }
 
 
+// Annotate:
+//  * worker process handle signal
 static void
 ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
 {
@@ -757,11 +764,12 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
     // * for-loop, handle signal/event/timer
     for ( ;; ) {
 
-        // * worker in exiting status, aka. receive SIGHUP/SIGUSR1/QUIT/WINCH
-        // * if worker always has event or timer, than, it can't gracefully shutdown, untile timeout ?
+        // * worker in exiting status, worker receive signal QUIT
         if (ngx_exiting) {
+            // * all handling connection/event have been done
             if (ngx_event_no_timers_left() == NGX_OK) {
                 ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "exiting");
+                // * worker exit
                 ngx_worker_process_exit(cycle);
             }
         }
@@ -786,8 +794,11 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 
             if (!ngx_exiting) {
                 ngx_exiting = 1;
+                // * set shutdown timer, if timer expire, terminal worker
                 ngx_set_shutdown_timer(cycle);
+                // * close listening socket, never accept incoming connection
                 ngx_close_listening_sockets(cycle);
+                // * close idle connections from connection pool
                 ngx_close_idle_connections(cycle);
             }
         }
@@ -967,6 +978,8 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
 }
 
 
+// Annotate:
+//  * recycle worker resource, exit
 static void
 ngx_worker_process_exit(ngx_cycle_t *cycle)
 {

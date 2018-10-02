@@ -4273,6 +4273,7 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
     u->finalize_request(r, rc);
 
     if (u->peer.free && u->peer.sockaddr) {
+        // * update upstream server info, weight, fails etc...
         u->peer.free(&u->peer, u->peer.data, 0);
         u->peer.sockaddr = NULL;
     }
@@ -5773,9 +5774,9 @@ ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 goto not_supported;
             }
 
+            // * positive value, return NGX_ERROR if invaliable
             weight = ngx_atoi(&value[i].data[7], value[i].len - 7);
 
-            // * weight must > 0
             if (weight == NGX_ERROR || weight == 0) {
                 goto invalid;
             }

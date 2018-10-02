@@ -625,6 +625,7 @@ ngx_http_upstream_free_round_robin_peer(ngx_peer_connection_t *pc, void *data,
     ngx_http_upstream_rr_peers_rlock(rrp->peers);
     ngx_http_upstream_rr_peer_lock(rrp->peers, peer);
 
+    // * when only one upstream server, wouldn't disable upstream even if it failed
     if (rrp->peers->single) {
 
         peer->conns--;
@@ -645,6 +646,7 @@ ngx_http_upstream_free_round_robin_peer(ngx_peer_connection_t *pc, void *data,
         peer->checked = now;
 
         if (peer->max_fails) {
+            // * update effective_weight
             peer->effective_weight -= peer->weight / peer->max_fails;
 
             if (peer->fails >= peer->max_fails) {

@@ -168,6 +168,8 @@ static ngx_http_geo_header_t  ngx_http_geo_header = {
 };
 
 
+// Annotate:
+//  * radixtree
 /* geo range is AF_INET only */
 
 static ngx_int_t

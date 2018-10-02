@@ -314,6 +314,7 @@ ngx_http_upstream_init_chash(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *us)
 
     points->number = 0;
 
+    // * only active peers, no backup
     for (peer = peers->peer; peer; peer = peer->next) {
         server = &peer->server;
 

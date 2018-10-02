@@ -837,6 +837,8 @@ static ngx_path_init_t  ngx_http_proxy_temp_path = {
 };
 
 
+// Annotate:
+//  *
 static ngx_int_t
 ngx_http_proxy_handler(ngx_http_request_t *r)
 {
@@ -863,6 +865,7 @@ ngx_http_proxy_handler(ngx_http_request_t *r)
 
     u = r->upstream;
 
+    // * ???
     if (plcf->proxy_lengths == NULL) {
         ctx->vars = plcf->vars;
         u->schema = plcf->vars.schema;
@@ -2400,6 +2403,9 @@ ngx_http_proxy_port_variable(ngx_http_request_t *r,
 }
 
 
+// Annotate:
+//  * handle "proxy_add_x_forwarded_for"
+//  * update "X-Forwarded-For"
 static ngx_int_t
 ngx_http_proxy_add_x_forwarded_for_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
@@ -3635,6 +3641,8 @@ ngx_http_proxy_init_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf,
 }
 
 
+// Annotate:
+//  *
 static char *
 ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
@@ -3656,6 +3664,7 @@ ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     clcf->handler = ngx_http_proxy_handler;
 
+    // * location entry endswith '/', enable auth_redirect
     if (clcf->name.data[clcf->name.len - 1] == '/') {
         clcf->auto_redirect = 1;
     }
@@ -3664,6 +3673,7 @@ ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     url = &value[1];
 
+    // * variables count, $xxx
     n = ngx_http_script_variables_count(url);
 
     if (n) {
@@ -3717,6 +3727,7 @@ ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     u.url.data = url->data + add;
     u.default_port = port;
     u.uri_part = 1;
+    // * ???
     u.no_resolve = 1;
 
     plcf->upstream.upstream = ngx_http_upstream_add(cf, &u, 0);
@@ -4390,6 +4401,9 @@ ngx_http_proxy_set_ssl(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *plcf)
 #endif
 
 
+// Annotate:
+//  * default:
+//      * AF_UNIX: http Host is "localhost"
 static void
 ngx_http_proxy_set_vars(ngx_url_t *u, ngx_http_proxy_vars_t *v)
 {

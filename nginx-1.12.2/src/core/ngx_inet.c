@@ -678,6 +678,8 @@ ngx_parse_addr_port(ngx_pool_t *pool, ngx_addr_t *addr, u_char *text,
 }
 
 
+// Annotate:
+//  *
 ngx_int_t
 ngx_parse_url(ngx_pool_t *pool, ngx_url_t *u)
 {
@@ -691,10 +693,12 @@ ngx_parse_url(ngx_pool_t *pool, ngx_url_t *u)
         return ngx_parse_unix_domain_url(pool, u);
     }
 
+    // * ipv6 must addr
     if (len && p[0] == '[') {
         return ngx_parse_inet6_url(pool, u);
     }
 
+    // * ipv4 or domain
     return ngx_parse_inet_url(pool, u);
 }
 
@@ -777,6 +781,8 @@ ngx_parse_unix_domain_url(ngx_pool_t *pool, ngx_url_t *u)
 }
 
 
+// Annotate:
+//  *
 static ngx_int_t
 ngx_parse_inet_url(ngx_pool_t *pool, ngx_url_t *u)
 {
@@ -937,6 +943,7 @@ ngx_parse_inet_url(ngx_pool_t *pool, ngx_url_t *u)
         return NGX_OK;
     }
 
+    // * resolve host
     if (ngx_inet_resolve_host(pool, u) != NGX_OK) {
         return NGX_ERROR;
     }
