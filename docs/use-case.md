@@ -159,3 +159,24 @@ location @fetch_remote {
     root               /data/files;
 }
 ```
+
+### Support mark server "backup" when use hash load balancing method
+1. Why && How
+```
+When nginx use "hash" load balancing method,
+nginx will try to find avaliable server in 20 times,
+while all failed, it will fallback into "rr" load balancing method.
+The default load balancing "round robin" support all server attrs,
+put "server" before balancing method,
+nginx will verify server attrs base on default load balancing method,
+not the one set on "upstream".
+```
+
+2. Example
+```
+upstream hash_backup {
+    server 127.0.0.1:8080;
+    server 127.0.0.2:8081 backup;
+    hash $remote_addr consistent;
+}
+```
