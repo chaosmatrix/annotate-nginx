@@ -180,3 +180,36 @@ upstream hash_backup {
     hash $remote_addr consistent;
 }
 ```
+
+### Nginx how to resolve domain
+1. How
+```
+1. "proxy_pass" contain variables
+    * nginx do resolve while receive every requests, via self implementation
+    * use local cache which respect "TTL" or "Vaild" to accelerate
+        * which is per Type per radix tree
+        * per qtype per queue to do resolve and retry.
+2. "proxy_pass" doesn't contain variables
+    * nginx do resolve at startup, direct call gethostbyname()
+    * even "resolver" already configure.
+```
+
+2. Example
+```
+1. Use nginx self iplementation dns resolver
+    resolver 127.0.0.1 ipv6=off valid=60s;
+    set $var_server example.com;
+    location / {
+        proxy_pass http://$var_server;
+        proxy_set_header Host $var_server;
+    }
+
+2. Use system gethostbyname()
+    # even "resolver" configured, it doesn't work.
+    resolver 127.0.0.1 ipv6=off valid=60s;
+    location / {
+        proxy_pass http://example.com;
+        proxy_set_header Host example.com;
+    }
+
+```
