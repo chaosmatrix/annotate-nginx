@@ -200,7 +200,7 @@ upstream hash_backup {
     resolver 127.0.0.1 ipv6=off valid=60s;
     set $var_server example.com;
     location / {
-        proxy_pass http://$var_server;
+        proxy_pass http://$var_server$uri$is_args$args;
         proxy_set_header Host $var_server;
     }
 
