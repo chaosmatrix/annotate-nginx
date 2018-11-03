@@ -865,7 +865,7 @@ ngx_http_proxy_handler(ngx_http_request_t *r)
 
     u = r->upstream;
 
-    // * ???
+    // * if proxy_pass contain variable, proxy_lengths == NULL
     if (plcf->proxy_lengths == NULL) {
         ctx->vars = plcf->vars;
         u->schema = plcf->vars.schema;
