@@ -78,6 +78,8 @@ typedef struct {
 } ngx_addr_t;
 
 
+// Annotate:
+//  *
 typedef struct {
     ngx_str_t                 url;
     ngx_str_t                 host;
@@ -90,6 +92,7 @@ typedef struct {
 
     unsigned                  listen:1;
     unsigned                  uri_part:1;
+    // * no resolve domain/host via gethostbyname()
     unsigned                  no_resolve:1;
 
     unsigned                  no_port:1;

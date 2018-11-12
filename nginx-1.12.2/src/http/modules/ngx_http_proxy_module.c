@@ -865,7 +865,7 @@ ngx_http_proxy_handler(ngx_http_request_t *r)
 
     u = r->upstream;
 
-    // * if proxy_pass contain variable, proxy_lengths == NULL
+    // * no $variables in "proxy_pass"
     if (plcf->proxy_lengths == NULL) {
         ctx->vars = plcf->vars;
         u->schema = plcf->vars.schema;
@@ -874,6 +874,7 @@ ngx_http_proxy_handler(ngx_http_request_t *r)
 #endif
 
     } else {
+        // * eval "proxy_pass" $variables
         if (ngx_http_proxy_eval(r, ctx, plcf) != NGX_OK) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
@@ -991,6 +992,7 @@ ngx_http_proxy_eval(ngx_http_request_t *r, ngx_http_proxy_ctx_t *ctx,
     url.url.data = proxy.data + add;
     url.default_port = port;
     url.uri_part = 1;
+    // * proxy_pass contains $variables, don't resolve domain/host via gethostbyname()
     url.no_resolve = 1;
 
     if (ngx_parse_url(r->pool, &url) != NGX_OK) {
@@ -1021,6 +1023,7 @@ ngx_http_proxy_eval(ngx_http_request_t *r, ngx_http_proxy_ctx_t *ctx,
 
     ngx_http_proxy_set_vars(&url, &ctx->vars);
 
+    // * domain need to resolve via nginx self implementation
     u->resolved = ngx_pcalloc(r->pool, sizeof(ngx_http_upstream_resolved_t));
     if (u->resolved == NULL) {
         return NGX_ERROR;
@@ -3682,8 +3685,11 @@ ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         sc.cf = cf;
         sc.source = url;
+        // * lengths
         sc.lengths = &plcf->proxy_lengths;
+        // * variable value
         sc.values = &plcf->proxy_values;
+        // * variable nums
         sc.variables = n;
         sc.complete_lengths = 1;
         sc.complete_values = 1;

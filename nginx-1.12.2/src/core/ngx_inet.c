@@ -939,6 +939,7 @@ ngx_parse_inet_url(ngx_pool_t *pool, ngx_url_t *u)
         return NGX_OK;
     }
 
+    // * no resolve host by gethostbyname()
     if (u->no_resolve) {
         return NGX_OK;
     }

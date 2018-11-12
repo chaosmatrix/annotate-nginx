@@ -705,6 +705,7 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
             }
         }
 
+        // if not NULL, no need to do resolve
         if (u->resolved->sockaddr) {
 
             if (u->resolved->port == 0
@@ -740,6 +741,8 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
 
         temp.name = *host;
 
+        //  * start resolve host/domain
+        //  * found in cache (ttl|vaild), do resolve by self implementation resolver
         ctx = ngx_resolve_start(clcf->resolver, &temp);
         if (ctx == NULL) {
             ngx_http_upstream_finalize_request(r, u,
