@@ -19,6 +19,7 @@
 // Annotate:
 //  * A module verify User-Agent
 //  * Server response base on User-Agent
+//  * strstr() : O(n)
 
 #define  NGX_HTTP_MODERN_BROWSER   0
 #define  NGX_HTTP_ANCIENT_BROWSER  1

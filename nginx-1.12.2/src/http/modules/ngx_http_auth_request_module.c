@@ -98,6 +98,8 @@ ngx_module_t  ngx_http_auth_request_module = {
 };
 
 
+// Annotation:
+//  *
 static ngx_int_t
 ngx_http_auth_request_handler(ngx_http_request_t *r)
 {
@@ -134,10 +136,12 @@ ngx_http_auth_request_handler(ngx_http_request_t *r)
 
         /* return appropriate status */
 
+        // * 403: FORBIDDEN
         if (ctx->status == NGX_HTTP_FORBIDDEN) {
             return ctx->status;
         }
 
+        // * 401: ask http auth basic
         if (ctx->status == NGX_HTTP_UNAUTHORIZED) {
             sr = ctx->subrequest;
 
@@ -161,6 +165,7 @@ ngx_http_auth_request_handler(ngx_http_request_t *r)
             return ctx->status;
         }
 
+        // [200, 300) : Auth Success
         if (ctx->status >= NGX_HTTP_OK
             && ctx->status < NGX_HTTP_SPECIAL_RESPONSE)
         {
@@ -170,6 +175,7 @@ ngx_http_auth_request_handler(ngx_http_request_t *r)
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "auth request unexpected status: %ui", ctx->status);
 
+        // Others: 500
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
@@ -186,6 +192,8 @@ ngx_http_auth_request_handler(ngx_http_request_t *r)
     ps->handler = ngx_http_auth_request_done;
     ps->data = ctx;
 
+    // * NGX_HTTP_SUBREQUEST_WAITED: make sure subrequest run serializes, instead in parallel
+    // * all HTTP METHOD will Overwrite as "GET"
     if (ngx_http_subrequest(r, &arcf->uri, NULL, &sr, ps,
                             NGX_HTTP_SUBREQUEST_WAITED)
         != NGX_OK)
@@ -333,7 +341,8 @@ ngx_http_auth_request_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     return NGX_CONF_OK;
 }
 
-
+// Annotation:
+//  *
 static ngx_int_t
 ngx_http_auth_request_init(ngx_conf_t *cf)
 {
@@ -342,6 +351,8 @@ ngx_http_auth_request_init(ngx_conf_t *cf)
 
     cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
 
+    // * module work on NGX_HTTP_ACCESS_PHASE
+    // * same as http_access/http_auth_basic
     h = ngx_array_push(&cmcf->phases[NGX_HTTP_ACCESS_PHASE].handlers);
     if (h == NULL) {
         return NGX_ERROR;

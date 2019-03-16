@@ -10,6 +10,19 @@
 #include <ngx_http.h>
 #include <ngx_md5.h>
 
+// Annotate:
+//  * Question:
+//      * algorithm
+//      * cache_key -> content
+//  * Answer:
+//      * rbtree: store cache_key -> cache_file_name
+//      * queue: FIFO, LRU algorithm
+//      * get cache_key from request -> get filename from rbtree -> read file
+//  * Pifall:
+//      * authorization
+//      * cache_key:content => 1:1
+//      * cache ttl: if too many cache_key, may not respect, FIFO
+
 
 static ngx_int_t ngx_http_file_cache_lock(ngx_http_request_t *r,
     ngx_http_cache_t *c);

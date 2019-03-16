@@ -1657,6 +1657,8 @@ ngx_http_core_find_static_location(ngx_http_request_t *r,
 
         if (len > (size_t) node->len) {
 
+             //  /* look up nested locations */
+            // * location /path { location /path/inclusive_path {} }
             if (node->inclusive) {
 
                 r->loc_conf = node->inclusive->loc_conf;
@@ -2493,7 +2495,9 @@ ngx_http_subrequest(ngx_http_request_t *r,
     }
 
     // * Question:
-    //      * subrequest limit flying 55535 ?
+    //      * subrequest limit flying 64535 ?
+    //      * one subrequest need to use one local port,
+    //      * if not-keepalive, not-http/2, not-reuse-time-wait socket
     /*
      * 1000 is reserved for other purposes.
      */
@@ -2622,6 +2626,7 @@ ngx_http_subrequest(ngx_http_request_t *r,
 
     *psr = sr;
 
+    // * clone subrequest
     if (flags & NGX_HTTP_SUBREQUEST_CLONE) {
         sr->method = r->method;
         sr->method_name = r->method_name;
