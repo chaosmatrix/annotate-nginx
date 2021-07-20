@@ -34,6 +34,8 @@ location @health_check_backend {
     * tcp protocol
         * reuse time_wait
         * more ip address
+            * bind before connect
+            * policy route
     * kernel
         * net.ipv4.tcp_tw_recycle
         * net.ipv4.tcp_tw_reuse
