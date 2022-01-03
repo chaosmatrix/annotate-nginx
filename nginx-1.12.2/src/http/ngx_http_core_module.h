@@ -485,6 +485,7 @@ typedef struct {
 
 // Annotate:
 //  * AVL Tree, O(logn)
+//	* Ternary Search Trie
 struct ngx_http_location_tree_node_s {
     ngx_http_location_tree_node_t   *left;
     ngx_http_location_tree_node_t   *right;

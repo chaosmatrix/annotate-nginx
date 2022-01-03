@@ -1536,6 +1536,11 @@ ngx_http_update_location_config(ngx_http_request_t *r)
     }
 }
 
+// Annotate:
+//  * exact match - return
+//	* longest prefix match - record and continue
+//	* regex match - return first match (configuration order)
+//	* return longest prefix match pre-found - return
 
 /*
  * NGX_OK       - exact or regex match
@@ -1615,6 +1620,9 @@ ngx_http_core_find_location(ngx_http_request_t *r)
 }
 
 
+// Annotate:
+//  * find longest prefix match location (inclusive)
+
 /*
  * NGX_OK       - exact match
  * NGX_DONE     - auto redirect
@@ -1647,6 +1655,7 @@ ngx_http_core_find_static_location(ngx_http_request_t *r,
 
         n = (len <= (size_t) node->len) ? len : node->len;
 
+		// find max length prefix match location (inclusive)
         rc = ngx_filename_cmp(uri, node->name, n);
 
         if (rc != 0) {
