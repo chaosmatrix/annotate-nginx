@@ -344,6 +344,15 @@ ngx_event_accept(ngx_event_t *ev)
 
 #if !(NGX_WIN32)
 
+
+// Annotate:
+//	* normally, when udp server listen on "0.0.0.0", it can't know the recving datagram's dest address,
+//	* so, it will response incoming datagrams base on system's default routing rule.
+//	* example, datagram send: 127.0.0.1:12345 -> 127.0.0.2:23456, datagram response: 127.0.0.1:23456 -> 127.0.0.1:12345
+//	* for strong end system (linux, and all most all others), such response will be discarded.
+// Reference:
+//	* IP_RECVDSTADDR || IP_PKTINFO || IPV6_RECVPKTINFO solve this problem
+//	* IP_RECVORIGDSTADDR (since Linux 2.6.29) || IPV6_RECVORIGDSTADDR || IP_PKTINFO (since Linux 2.2)
 void
 ngx_event_recvmsg(ngx_event_t *ev)
 {
